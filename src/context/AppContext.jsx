@@ -1,94 +1,96 @@
-import { createContext, useContext, useReducer, useEffect } from 'react'
+import { createContext, useContext, useEffect, useState } from 'react'
+import { supabase, fromDb, toDb } from '../utils/supabase'
 
 const AppContext = createContext(null)
 
-const STORAGE_KEY = 'fhm_v1'
-
-const initialState = {
-  players: [],
-  matches: [],
-}
-
-function reducer(state, action) {
-  switch (action.type) {
-    case 'ADD_PLAYER':
-      return { ...state, players: [...state.players, action.payload] }
-
-    case 'UPDATE_PLAYER':
-      return {
-        ...state,
-        players: state.players.map(p =>
-          p.id === action.payload.id ? { ...p, ...action.payload } : p
-        ),
-      }
-
-    case 'ARCHIVE_PLAYER':
-      return {
-        ...state,
-        players: state.players.map(p =>
-          p.id === action.id ? { ...p, archived: !p.archived } : p
-        ),
-      }
-
-    case 'ADD_MATCH':
-      return { ...state, matches: [...state.matches, action.payload] }
-
-    case 'UPDATE_MATCH':
-      return {
-        ...state,
-        matches: state.matches.map(m =>
-          m.id === action.payload.id ? { ...m, ...action.payload } : m
-        ),
-      }
-
-    case 'DELETE_MATCH':
-      return { ...state, matches: state.matches.filter(m => m.id !== action.id) }
-
-    case 'REPLACE_MATCHES':
-      return { ...state, matches: action.payload }
-
-    default:
-      return state
-  }
-}
-
 export function AppProvider({ children }) {
-  const [state, dispatch] = useReducer(reducer, initialState, () => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY)
-      return saved ? JSON.parse(saved) : initialState
-    } catch {
-      return initialState
-    }
-  })
+  const [players, setPlayers] = useState([])
+  const [matches, setMatches] = useState([])
+  const [loading, setLoading] = useState(true)
 
+  // Initial fetch + real-time subscriptions
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
-  }, [state])
+    Promise.all([
+      supabase.from('players').select('*').order('created_at'),
+      supabase.from('matches').select('*').order('date'),
+    ]).then(([{ data: p }, { data: m }]) => {
+      if (p) setPlayers(p.map(fromDb.player))
+      if (m) setMatches(m.map(fromDb.match))
+      setLoading(false)
+    })
 
-  const addPlayer = (player) =>
-    dispatch({ type: 'ADD_PLAYER', payload: { ...player, id: crypto.randomUUID(), archived: false, createdAt: Date.now() } })
+    const channel = supabase
+      .channel('app-data')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'players' }, ({ new: row }) => {
+        setPlayers(prev => [...prev.filter(p => p.id !== row.id), fromDb.player(row)])
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'players' }, ({ new: row }) => {
+        setPlayers(prev => prev.map(p => p.id === row.id ? fromDb.player(row) : p))
+      })
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'players' }, ({ old: row }) => {
+        setPlayers(prev => prev.filter(p => p.id !== row.id))
+      })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'matches' }, ({ new: row }) => {
+        setMatches(prev => [...prev.filter(m => m.id !== row.id), fromDb.match(row)])
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'matches' }, ({ new: row }) => {
+        setMatches(prev => prev.map(m => m.id === row.id ? fromDb.match(row) : m))
+      })
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'matches' }, ({ old: row }) => {
+        setMatches(prev => prev.filter(m => m.id !== row.id))
+      })
+      .subscribe()
 
-  const updatePlayer = (player) =>
-    dispatch({ type: 'UPDATE_PLAYER', payload: player })
+    return () => supabase.removeChannel(channel)
+  }, [])
 
-  const toggleArchivePlayer = (id) =>
-    dispatch({ type: 'ARCHIVE_PLAYER', id })
+  const addPlayer = async (player) => {
+    const row = toDb.player({ ...player, id: crypto.randomUUID(), archived: false })
+    await supabase.from('players').insert(row)
+  }
 
-  const addMatch = (match) =>
-    dispatch({ type: 'ADD_MATCH', payload: { ...match, id: crypto.randomUUID() } })
+  const updatePlayer = async (player) => {
+    await supabase.from('players').update(toDb.player(player)).eq('id', player.id)
+  }
 
-  const updateMatch = (match) =>
-    dispatch({ type: 'UPDATE_MATCH', payload: match })
+  const toggleArchivePlayer = async (id) => {
+    const player = players.find(p => p.id === id)
+    if (!player) return
+    await supabase.from('players').update({ archived: !player.archived }).eq('id', id)
+  }
 
-  const deleteMatch = (id) =>
-    dispatch({ type: 'DELETE_MATCH', id })
+  const addMatch = async (match) => {
+    const row = toDb.match({ ...match, id: crypto.randomUUID() })
+    await supabase.from('matches').insert(row)
+  }
 
-  const importMatches = (matches) =>
-    dispatch({ type: 'REPLACE_MATCHES', payload: matches })
+  const updateMatch = async (match) => {
+    await supabase.from('matches').update(toDb.match(match)).eq('id', match.id)
+  }
+
+  const deleteMatch = async (id) => {
+    await supabase.from('matches').delete().eq('id', id)
+  }
+
+  const importMatches = async (newMatches) => {
+    await supabase.from('matches').delete().neq('id', '')
+    const rows = newMatches.map(m => toDb.match({ ...m, id: m.id || crypto.randomUUID() }))
+    await supabase.from('matches').insert(rows)
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#f9fafb' }}>
+        <div className="text-center">
+          <div className="w-10 h-10 border-4 border-amhc-green border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-sm text-gray-400 font-medium">Laden...</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
-    <AppContext.Provider value={{ ...state, addPlayer, updatePlayer, toggleArchivePlayer, addMatch, updateMatch, deleteMatch, importMatches }}>
+    <AppContext.Provider value={{ players, matches, addPlayer, updatePlayer, toggleArchivePlayer, addMatch, updateMatch, deleteMatch, importMatches }}>
       {children}
     </AppContext.Provider>
   )

@@ -11,7 +11,8 @@ import {
 } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
 import { useApp } from '../context/AppContext'
-import { getPositions, formatTime, getInitials, FORMAT_OPTIONS, HALF_DURATION_MS } from '../utils/positions'
+import { getPositions, formatTime, FORMAT_OPTIONS, HALF_DURATION_MS } from '../utils/positions'
+import { supabase } from '../utils/supabase'
 import FieldSVG from '../components/FieldSVG'
 import PlayerAvatar from '../components/PlayerAvatar'
 
@@ -49,8 +50,6 @@ function FieldChip({ player, posId, timer }) {
     data: { fromPosition: posId },
   })
   const { setNodeRef: setDropRef, isOver } = useDroppable({ id: posId })
-
-  // Merge both refs onto the same DOM node
   const setRef = (node) => { setDragRef(node); setDropRef(node) }
 
   return (
@@ -88,14 +87,9 @@ function EmptySlot({ posId, label }) {
   )
 }
 
-// ── Field position slot ──────────────────────────────────────────────────────
-
 function PositionSlot({ pos, player, timer }) {
   return (
-    <div
-      className="absolute -translate-x-1/2 -translate-y-1/2"
-      style={{ left: `${pos.x}%`, top: `${pos.y}%` }}
-    >
+    <div className="absolute -translate-x-1/2 -translate-y-1/2" style={{ left: `${pos.x}%`, top: `${pos.y}%` }}>
       {player
         ? <FieldChip player={player} posId={pos.id} timer={timer} />
         : <EmptySlot posId={pos.id} label={pos.label} />
@@ -108,7 +102,6 @@ function PositionSlot({ pos, player, timer }) {
 
 function Bench({ benchIds, players, getTimer, getBenchTimer }) {
   const { setNodeRef, isOver } = useDroppable({ id: 'bench' })
-
   return (
     <div
       ref={setNodeRef}
@@ -142,8 +135,6 @@ function Bench({ benchIds, players, getTimer, getBenchTimer }) {
   )
 }
 
-// ── Ghost shown while dragging ───────────────────────────────────────────────
-
 function DragGhost({ player }) {
   if (!player) return null
   return (
@@ -154,12 +145,19 @@ function DragGhost({ player }) {
   )
 }
 
-// ── Match clock display ──────────────────────────────────────────────────────
-
 function formatClockTime(ms) {
   if (ms <= 0) return '0:00'
   const s = Math.floor(ms / 1000)
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
+}
+
+// ── Supabase sync helper ─────────────────────────────────────────────────────
+
+async function pushState(patch) {
+  await supabase
+    .from('lineup_state')
+    .update({ ...patch, updated_at: new Date().toISOString() })
+    .eq('id', 1)
 }
 
 // ── Main Lineup page ─────────────────────────────────────────────────────────
@@ -168,38 +166,74 @@ export default function Lineup() {
   const { players, matches, updateMatch } = useApp()
   const activePlayers = players.filter(p => !p.archived)
 
-  // Restore state from sessionStorage so clock/timers survive navigation
-  const [sv] = useState(() => {
-    try { return JSON.parse(sessionStorage.getItem('fhm_lineup') || '{}') } catch { return {} }
-  })
-
-  const [selectedMatchId, setSelectedMatchId] = useState(sv.selectedMatchId ?? '')
-  const [format, setFormat] = useState(sv.format ?? 8)
-  const [positions, setPositions] = useState(() => sv.positions ?? getPositions(sv.format ?? 8))
-  const [bench, setBench] = useState(() => sv.bench ?? activePlayers.map(p => p.id))
-  const [selectedPlayers, setSelectedPlayers] = useState(() => sv.selectedPlayers ?? activePlayers.map(p => p.id))
-  const [timers, setTimers] = useState(sv.timers ?? {})
-  const [benchTimers, setBenchTimers] = useState(sv.benchTimers ?? {})
+  const [selectedMatchId, setSelectedMatchIdState] = useState('')
+  const [format, setFormatState] = useState(8)
+  const [positions, setPositions] = useState(() => getPositions(8))
+  const [bench, setBench] = useState([])
+  const [selectedPlayers, setSelectedPlayers] = useState([])
+  const [timers, setTimers] = useState({})
+  const [benchTimers, setBenchTimers] = useState({})
+  const [clock, setClock] = useState({ running: false, half: 1, elapsed: 0, startTimestamp: null })
+  const [score, setScoreState] = useState({ home: 0, away: 0 })
   const [activeId, setActiveId] = useState(null)
   const [tick, setTick] = useState(0)
   const [savedMsg, setSavedMsg] = useState('')
-  const [clock, setClock] = useState(sv.clock ?? { running: false, half: 1, elapsed: 0, startTimestamp: null })
-  const [score, setScore] = useState(sv.score ?? { home: 0, away: 0 })
   const [showSelection, setShowSelection] = useState(false)
+  const [synced, setSynced] = useState(false)
 
-  // Persist all lineup state to sessionStorage on every change
+  // Ignore remote updates while we're processing a local change
+  const localChange = useRef(false)
+
+  // Initial fetch from Supabase
   useEffect(() => {
-    sessionStorage.setItem('fhm_lineup', JSON.stringify({
-      selectedMatchId, format, positions, bench, selectedPlayers,
-      timers, benchTimers, clock, score,
-    }))
-  }, [selectedMatchId, format, positions, bench, selectedPlayers, timers, benchTimers, clock, score])
+    supabase.from('lineup_state').select('*').eq('id', 1).single().then(({ data }) => {
+      if (!data) return
+      if (data.format) setFormatState(data.format)
+      if (data.positions?.length) setPositions(data.positions)
+      if (data.bench) setBench(data.bench)
+      if (data.selected_players) setSelectedPlayers(data.selected_players)
+      else setSelectedPlayers(activePlayers.map(p => p.id))
+      if (data.timers) setTimers(data.timers)
+      if (data.bench_timers) setBenchTimers(data.bench_timers)
+      if (data.clock) setClock(data.clock)
+      if (data.score) setScoreState(data.score)
+      if (data.selected_match_id) setSelectedMatchIdState(data.selected_match_id)
+      setSynced(true)
+    })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
-  // Tick every second to update timer and clock displays
+  // Real-time subscription — update state when another device makes a change
+  useEffect(() => {
+    const channel = supabase
+      .channel('lineup-sync')
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'lineup_state' }, ({ new: data }) => {
+        if (localChange.current) return
+        if (data.format) setFormatState(data.format)
+        if (data.positions) setPositions(data.positions)
+        if (data.bench) setBench(data.bench)
+        if (data.selected_players) setSelectedPlayers(data.selected_players)
+        if (data.timers) setTimers(data.timers)
+        if (data.bench_timers) setBenchTimers(data.bench_timers)
+        if (data.clock) setClock(data.clock)
+        if (data.score) setScoreState(data.score)
+        if (data.selected_match_id !== undefined) setSelectedMatchIdState(data.selected_match_id)
+      })
+      .subscribe()
+    return () => supabase.removeChannel(channel)
+  }, [])
+
+  // Tick every second for timer displays
   useEffect(() => {
     const id = setInterval(() => setTick(t => t + 1), 1000)
     return () => clearInterval(id)
   }, [])
+
+  const withLocal = (fn) => {
+    localChange.current = true
+    fn()
+    setTimeout(() => { localChange.current = false }, 500)
+  }
 
   const getTimer = useCallback((playerId) => {
     const t = timers[playerId]
@@ -219,120 +253,133 @@ export default function Lineup() {
     ? clock.elapsed + (Date.now() - clock.startTimestamp)
     : clock.elapsed
 
-  const halfDone = clockElapsed >= HALF_DURATION_MS
-
   const onFieldIds = () => positions.filter(p => p.playerId).map(p => p.playerId)
 
   const toggleClock = () => {
     const now = Date.now()
     const fieldIds = onFieldIds()
     const benchIds = bench.filter(id => selectedPlayers.includes(id))
+
+    let newTimers, newBenchTimers, newClock
+
     if (clock.running) {
-      // Pause — accumulate field timers, stop bench timers
-      setTimers(prev => {
-        const next = { ...prev }
-        for (const pid of fieldIds) {
-          const t = next[pid] || { startTime: null, accumulated: 0 }
-          next[pid] = { startTime: null, accumulated: t.accumulated + (t.startTime != null ? now - t.startTime : 0) }
-        }
-        return next
-      })
-      setBenchTimers(prev => {
-        const next = { ...prev }
-        for (const pid of benchIds) {
-          const t = next[pid] || { startTime: null, accumulated: 0 }
-          next[pid] = { startTime: null, accumulated: t.accumulated + (t.startTime != null ? now - t.startTime : 0) }
-        }
-        return next
-      })
-      setClock(prev => ({ ...prev, running: false, elapsed: prev.elapsed + (prev.startTimestamp != null ? now - prev.startTimestamp : 0), startTimestamp: null }))
+      newTimers = { ...timers }
+      for (const pid of fieldIds) {
+        const t = newTimers[pid] || { startTime: null, accumulated: 0 }
+        newTimers[pid] = { startTime: null, accumulated: t.accumulated + (t.startTime != null ? now - t.startTime : 0) }
+      }
+      newBenchTimers = { ...benchTimers }
+      for (const pid of benchIds) {
+        const t = newBenchTimers[pid] || { startTime: null, accumulated: 0 }
+        newBenchTimers[pid] = { startTime: null, accumulated: t.accumulated + (t.startTime != null ? now - t.startTime : 0) }
+      }
+      newClock = { ...clock, running: false, elapsed: clock.elapsed + (clock.startTimestamp != null ? now - clock.startTimestamp : 0), startTimestamp: null }
     } else {
-      // Start — kick off field timers, start bench timers
-      setTimers(prev => {
-        const next = { ...prev }
-        for (const pid of fieldIds) {
-          const t = next[pid] || { startTime: null, accumulated: 0 }
-          if (t.startTime == null) next[pid] = { ...t, startTime: now }
-        }
-        return next
-      })
-      setBenchTimers(prev => {
-        const next = { ...prev }
-        for (const pid of benchIds) {
-          const t = next[pid] || { startTime: null, accumulated: 0 }
-          if (t.startTime == null) next[pid] = { ...t, startTime: now }
-        }
-        return next
-      })
-      setClock(prev => ({ ...prev, running: true, startTimestamp: now }))
+      newTimers = { ...timers }
+      for (const pid of fieldIds) {
+        const t = newTimers[pid] || { startTime: null, accumulated: 0 }
+        if (t.startTime == null) newTimers[pid] = { ...t, startTime: now }
+      }
+      newBenchTimers = { ...benchTimers }
+      for (const pid of benchIds) {
+        const t = newBenchTimers[pid] || { startTime: null, accumulated: 0 }
+        if (t.startTime == null) newBenchTimers[pid] = { ...t, startTime: now }
+      }
+      newClock = { ...clock, running: true, startTimestamp: now }
     }
+
+    withLocal(() => {
+      setTimers(newTimers)
+      setBenchTimers(newBenchTimers)
+      setClock(newClock)
+    })
+    pushState({ timers: newTimers, bench_timers: newBenchTimers, clock: newClock })
   }
 
-  const stopAllTimers = (now) => {
-    setTimers(prev => {
-      const next = { ...prev }
-      for (const pid of onFieldIds()) {
-        const t = next[pid] || { startTime: null, accumulated: 0 }
-        next[pid] = { startTime: null, accumulated: t.accumulated + (t.startTime != null ? now - t.startTime : 0) }
-      }
-      return next
-    })
-    setBenchTimers(prev => {
-      const next = { ...prev }
-      for (const pid of bench.filter(id => selectedPlayers.includes(id))) {
-        const t = next[pid] || { startTime: null, accumulated: 0 }
-        next[pid] = { startTime: null, accumulated: t.accumulated + (t.startTime != null ? now - t.startTime : 0) }
-      }
-      return next
-    })
+  const stopAllTimers = (now, currentTimers, currentBenchTimers) => {
+    const newTimers = { ...currentTimers }
+    for (const pid of onFieldIds()) {
+      const t = newTimers[pid] || { startTime: null, accumulated: 0 }
+      newTimers[pid] = { startTime: null, accumulated: t.accumulated + (t.startTime != null ? now - t.startTime : 0) }
+    }
+    const newBenchTimers = { ...currentBenchTimers }
+    for (const pid of bench.filter(id => selectedPlayers.includes(id))) {
+      const t = newBenchTimers[pid] || { startTime: null, accumulated: 0 }
+      newBenchTimers[pid] = { startTime: null, accumulated: t.accumulated + (t.startTime != null ? now - t.startTime : 0) }
+    }
+    return { newTimers, newBenchTimers }
   }
 
   const switchHalf = (h) => {
     const now = Date.now()
-    if (clock.running) stopAllTimers(now)
-    setClock({ running: false, half: h, elapsed: 0, startTimestamp: null })
+    const { newTimers, newBenchTimers } = clock.running ? stopAllTimers(now, timers, benchTimers) : { newTimers: timers, newBenchTimers: benchTimers }
+    const newClock = { running: false, half: h, elapsed: 0, startTimestamp: null }
+    withLocal(() => {
+      setTimers(newTimers)
+      setBenchTimers(newBenchTimers)
+      setClock(newClock)
+    })
+    pushState({ timers: newTimers, bench_timers: newBenchTimers, clock: newClock })
   }
 
   const resetClock = () => {
-    const now = Date.now()
-    if (clock.running) stopAllTimers(now)
-    setClock({ running: false, half: 1, elapsed: 0, startTimestamp: null })
-    setTimers({})
-    setBenchTimers({})
+    const newClock = { running: false, half: 1, elapsed: 0, startTimestamp: null }
+    withLocal(() => {
+      setClock(newClock)
+      setTimers({})
+      setBenchTimers({})
+    })
+    pushState({ clock: newClock, timers: {}, bench_timers: {} })
+  }
+
+  const setSelectedMatchId = (id) => {
+    withLocal(() => setSelectedMatchIdState(id))
+    pushState({ selected_match_id: id })
+  }
+
+  const setScore = (updater) => {
+    const newScore = typeof updater === 'function' ? updater(score) : updater
+    withLocal(() => setScoreState(newScore))
+    pushState({ score: newScore })
   }
 
   const changeFormat = (f) => {
     const newPositions = getPositions(f)
-    const onFieldIds = positions.map(p => p.playerId).filter(Boolean)
     const now = Date.now()
-    setTimers(prev => {
-      const next = { ...prev }
-      for (const pid of onFieldIds) {
-        const t = next[pid] || { startTime: null, accumulated: 0 }
-        next[pid] = { startTime: null, accumulated: t.accumulated + (t.startTime != null ? now - t.startTime : 0) }
-      }
-      return next
+    const newTimers = { ...timers }
+    for (const pid of positions.map(p => p.playerId).filter(Boolean)) {
+      const t = newTimers[pid] || { startTime: null, accumulated: 0 }
+      newTimers[pid] = { startTime: null, accumulated: t.accumulated + (t.startTime != null ? now - t.startTime : 0) }
+    }
+    withLocal(() => {
+      setTimers(newTimers)
+      setPositions(newPositions)
+      setBench(selectedPlayers)
+      setFormatState(f)
     })
-    setPositions(newPositions)
-    setBench(selectedPlayers)
-    setFormat(f)
+    pushState({ format: f, positions: newPositions, bench: selectedPlayers, timers: newTimers })
   }
 
   const resetLineup = () => {
     const now = Date.now()
-    setTimers(prev => {
-      const next = { ...prev }
-      for (const pid of Object.keys(next)) {
-        const t = next[pid]
-        next[pid] = { startTime: null, accumulated: t.accumulated + (t.startTime != null ? now - t.startTime : 0) }
-      }
-      return next
+    const newTimers = { ...timers }
+    for (const pid of Object.keys(newTimers)) {
+      const t = newTimers[pid]
+      newTimers[pid] = { startTime: null, accumulated: t.accumulated + (t.startTime != null ? now - t.startTime : 0) }
+    }
+    const newPositions = getPositions(format)
+    withLocal(() => {
+      setTimers(newTimers)
+      setPositions(newPositions)
+      setBench(selectedPlayers)
     })
-    setPositions(getPositions(format))
-    setBench(selectedPlayers)
+    pushState({ positions: newPositions, bench: selectedPlayers, timers: newTimers })
   }
 
-  const resetTimers = () => setTimers({})
+  const resetTimers = () => {
+    withLocal(() => { setTimers({}); setBenchTimers({}) })
+    pushState({ timers: {}, bench_timers: {} })
+  }
 
   const saveLineup = () => {
     if (!selectedMatchId) return
@@ -346,55 +393,63 @@ export default function Lineup() {
   useEffect(() => {
     if (!selectedMatchId) return
     const match = matches.find(m => m.id === selectedMatchId)
-    if (match?.scoreHome != null) setScore({ home: match.scoreHome, away: match.scoreAway ?? 0 })
+    if (match?.scoreHome != null) {
+      const newScore = { home: match.scoreHome, away: match.scoreAway ?? 0 }
+      withLocal(() => setScoreState(newScore))
+    }
     if (match?.attendees?.length) {
-      setSelectedPlayers(match.attendees)
+      withLocal(() => setSelectedPlayers(match.attendees))
     }
     if (!match?.lineup?.length) return
     const newPositions = getPositions(format).map(pos => {
       const saved = match.lineup.find(l => l.positionId === pos.id)
       return saved ? { ...pos, playerId: saved.playerId } : pos
     })
-    const onFieldIds = new Set(newPositions.map(p => p.playerId).filter(Boolean))
-    setPositions(newPositions)
+    const onFieldSet = new Set(newPositions.map(p => p.playerId).filter(Boolean))
     const attendees = match.attendees?.length ? match.attendees : activePlayers.map(p => p.id)
-    setBench(attendees.filter(id => !onFieldIds.has(id)))
+    const newBench = attendees.filter(id => !onFieldSet.has(id))
+    withLocal(() => {
+      setPositions(newPositions)
+      setBench(newBench)
+    })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedMatchId])
 
-  // Keep bench in sync when selectedPlayers changes (remove absent players from bench/field)
   const togglePlayerSelection = (id) => {
-    setSelectedPlayers(prev => {
-      const next = prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
-      // If removing from selection, also remove from field
-      if (!next.includes(id)) {
-        const onField = positions.some(p => p.playerId === id)
-        if (onField) {
-          setPositions(pos => pos.map(p => p.playerId === id ? { ...p, playerId: null } : p))
-        }
-        setBench(b => b.filter(x => x !== id))
-      } else {
-        // Add back to bench if not on field
-        const onField = positions.some(p => p.playerId === id)
-        if (!onField) setBench(b => b.includes(id) ? b : [...b, id])
+    let newSelected, newBench
+    if (selectedPlayers.includes(id)) {
+      newSelected = selectedPlayers.filter(x => x !== id)
+      newBench = bench.filter(x => x !== id)
+      const onField = positions.some(p => p.playerId === id)
+      if (onField) {
+        const newPositions = positions.map(p => p.playerId === id ? { ...p, playerId: null } : p)
+        withLocal(() => { setPositions(newPositions); setSelectedPlayers(newSelected); setBench(newBench) })
+        pushState({ positions: newPositions, selected_players: newSelected, bench: newBench })
+        return
       }
-      return next
-    })
+    } else {
+      newSelected = [...selectedPlayers, id]
+      const onField = positions.some(p => p.playerId === id)
+      newBench = onField ? bench : (bench.includes(id) ? bench : [...bench, id])
+    }
+    withLocal(() => { setSelectedPlayers(newSelected); setBench(newBench) })
+    pushState({ selected_players: newSelected, bench: newBench })
   }
 
   const selectAll = () => {
-    setSelectedPlayers(activePlayers.map(p => p.id))
-    const onFieldIds = new Set(positions.map(p => p.playerId).filter(Boolean))
-    setBench(activePlayers.filter(p => !onFieldIds.has(p.id)).map(p => p.id))
+    const onFieldSet = new Set(positions.map(p => p.playerId).filter(Boolean))
+    const newSelected = activePlayers.map(p => p.id)
+    const newBench = activePlayers.filter(p => !onFieldSet.has(p.id)).map(p => p.id)
+    withLocal(() => { setSelectedPlayers(newSelected); setBench(newBench) })
+    pushState({ selected_players: newSelected, bench: newBench })
   }
 
   const clearAll = () => {
-    setSelectedPlayers([])
-    setPositions(pos => pos.map(p => ({ ...p, playerId: null })))
-    setBench([])
+    const newPositions = positions.map(p => ({ ...p, playerId: null }))
+    withLocal(() => { setSelectedPlayers([]); setPositions(newPositions); setBench([]) })
+    pushState({ selected_players: [], positions: newPositions, bench: [] })
   }
 
-  // DnD sensors
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 5 } }),
@@ -412,7 +467,6 @@ export default function Lineup() {
 
     const fromPos = positions.find(p => p.playerId === draggedId)
     const fromBench = !fromPos
-
     if (!fromBench && fromPos.id === dropId) return
 
     let newPositions = positions.map(p => ({ ...p }))
@@ -426,67 +480,53 @@ export default function Lineup() {
     } else {
       const targetSlot = newPositions.find(p => p.id === dropId)
       if (!targetSlot) return
-
       const displacedId = targetSlot.playerId
-
       newPositions = newPositions.map(p => {
         if (p.id === dropId) return { ...p, playerId: draggedId }
         if (fromPos && p.id === fromPos.id) return { ...p, playerId: displacedId ?? null }
         return p
       })
-
       if (fromBench) {
         newBench = newBench.filter(id => id !== draggedId)
         if (displacedId) newBench = [...newBench, displacedId]
       }
     }
 
-    setPositions(newPositions)
-    setBench(newBench)
-
     const wasOnField = (pid) => positions.some(p => p.playerId === pid)
     const isOnField = (pid) => newPositions.some(p => p.playerId === pid)
-
     const involved = [...new Set([draggedId, fromPos?.playerId, positions.find(p => p.id === dropId)?.playerId].filter(Boolean))]
 
-    setTimers(prev => {
-      const next = { ...prev }
-      for (const pid of involved) {
-        const was = wasOnField(pid)
-        const is = isOnField(pid)
-        const t = next[pid] || { startTime: null, accumulated: 0 }
-        if (!was && is) {
-          next[pid] = { ...t, startTime: clock.running ? now : null }
-        } else if (was && !is) {
-          next[pid] = { startTime: null, accumulated: t.accumulated + (t.startTime != null ? now - t.startTime : 0) }
-        }
-      }
-      return next
-    })
+    const newTimers = { ...timers }
+    const newBenchTimers = { ...benchTimers }
 
-    // Mirror bench timer — opposite logic to field timer
-    setBenchTimers(prev => {
-      const next = { ...prev }
-      for (const pid of involved) {
-        const was = wasOnField(pid)
-        const is = isOnField(pid)
-        const t = next[pid] || { startTime: null, accumulated: 0 }
-        if (!was && is) {
-          // went to field: stop bench timer
-          next[pid] = { startTime: null, accumulated: t.accumulated + (t.startTime != null ? now - t.startTime : 0) }
-        } else if (was && !is) {
-          // went to bench: start bench timer if clock running
-          next[pid] = { ...t, startTime: clock.running ? now : null }
-        }
+    for (const pid of involved) {
+      const was = wasOnField(pid)
+      const is = isOnField(pid)
+      if (!was && is) {
+        const t = newTimers[pid] || { startTime: null, accumulated: 0 }
+        newTimers[pid] = { ...t, startTime: clock.running ? now : null }
+        const bt = newBenchTimers[pid] || { startTime: null, accumulated: 0 }
+        newBenchTimers[pid] = { startTime: null, accumulated: bt.accumulated + (bt.startTime != null ? now - bt.startTime : 0) }
+      } else if (was && !is) {
+        const t = newTimers[pid] || { startTime: null, accumulated: 0 }
+        newTimers[pid] = { startTime: null, accumulated: t.accumulated + (t.startTime != null ? now - t.startTime : 0) }
+        const bt = newBenchTimers[pid] || { startTime: null, accumulated: 0 }
+        newBenchTimers[pid] = { ...bt, startTime: clock.running ? now : null }
       }
-      return next
+    }
+
+    withLocal(() => {
+      setPositions(newPositions)
+      setBench(newBench)
+      setTimers(newTimers)
+      setBenchTimers(newBenchTimers)
     })
+    pushState({ positions: newPositions, bench: newBench, timers: newTimers, bench_timers: newBenchTimers })
   }
 
   const activePlayer = activeId ? activePlayers.find(p => p.id === activeId) : null
   const sortedMatches = [...matches].sort((a, b) => a.date.localeCompare(b.date))
   const visibleBench = bench.filter(id => selectedPlayers.includes(id))
-
   const selectedMatch = matches.find(m => m.id === selectedMatchId)
 
   const MONTHS_SHORT = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec']
@@ -495,13 +535,23 @@ export default function Lineup() {
     return `${Number(d)} ${MONTHS_SHORT[Number(m) - 1]}`
   }
 
+  if (!synced) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-4 border-amhc-green border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+          <p className="text-sm text-gray-400">Opstelling laden...</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="max-w-6xl mx-auto px-3 py-6">
 
       {/* Page header row */}
       <div className="flex flex-wrap items-center gap-2 mb-4">
         <h1 className="text-2xl font-bold text-amhc-black mr-auto">Opstelling</h1>
-        {/* Format dropdown */}
         <select
           value={format}
           onChange={e => changeFormat(Number(e.target.value))}
@@ -525,7 +575,7 @@ export default function Lineup() {
         {savedMsg && <span className="text-amhc-green text-sm font-bold">{savedMsg}</span>}
       </div>
 
-      {/* Match selector card */}
+      {/* Match selector */}
       {!selectedMatchId ? (
         <div className="mb-4 rounded-2xl border-2 border-dashed p-5 flex flex-col sm:flex-row items-start sm:items-center gap-4" style={{ borderColor: '#006847', backgroundColor: '#f0faf5' }}>
           <div className="flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center text-xl" style={{ backgroundColor: '#006847' }}>
@@ -603,9 +653,7 @@ export default function Lineup() {
                   key={p.id}
                   onClick={() => togglePlayerSelection(p.id)}
                   className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold border transition-colors ${
-                    present
-                      ? 'bg-[#0068471a] border-amhc-green text-amhc-dark'
-                      : 'bg-gray-50 border-gray-200 text-gray-400'
+                    present ? 'bg-[#0068471a] border-amhc-green text-amhc-dark' : 'bg-gray-50 border-gray-200 text-gray-400'
                   }`}
                 >
                   <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${present ? 'bg-amhc-green' : 'bg-gray-300'}`} />
@@ -621,9 +669,7 @@ export default function Lineup() {
       {selectedMatchId && (
         <div className="mb-4 card">
           <div className="flex flex-wrap items-center gap-4">
-            {/* Clock */}
             <div className="flex items-center gap-3 flex-wrap">
-              {/* Half toggle */}
               <div className="flex gap-1 bg-gray-100 p-1 rounded-xl">
                 {[1, 2].map(h => (
                   <button
@@ -635,10 +681,8 @@ export default function Lineup() {
                   </button>
                 ))}
               </div>
-              <div className="text-center">
-                <div className="text-3xl font-mono font-bold text-amhc-black tabular-nums">
-                  {formatClockTime(Math.max(0, HALF_DURATION_MS - clockElapsed))}
-                </div>
+              <div className="text-3xl font-mono font-bold text-amhc-black tabular-nums">
+                {formatClockTime(Math.max(0, HALF_DURATION_MS - clockElapsed))}
               </div>
               <div className="flex flex-col gap-1">
                 <button
@@ -648,9 +692,7 @@ export default function Lineup() {
                   {clock.running ? 'Pauzeren' : (clock.elapsed === 0 ? 'Starten' : 'Hervatten')}
                 </button>
                 {(clock.elapsed > 0 || clock.half > 1) && (
-                  <button onClick={resetClock} className="text-xs text-gray-400 hover:text-gray-600 text-center">
-                    Reset
-                  </button>
+                  <button onClick={resetClock} className="text-xs text-gray-400 hover:text-gray-600 text-center">Reset</button>
                 )}
               </div>
             </div>
@@ -694,9 +736,7 @@ export default function Lineup() {
           {/* Field */}
           <div className="w-full max-w-xs sm:max-w-sm mx-auto md:mx-0 md:flex-shrink-0">
             <div className="relative rounded-xl overflow-hidden shadow-lg" style={{ aspectRatio: '300/500' }}>
-              <div className="absolute inset-0">
-                <FieldSVG />
-              </div>
+              <div className="absolute inset-0"><FieldSVG /></div>
               {positions.map(pos => {
                 const player = pos.playerId ? activePlayers.find(p => p.id === pos.playerId) : null
                 return (
@@ -711,14 +751,13 @@ export default function Lineup() {
             </div>
           </div>
 
-          {/* Bench */}
+          {/* Bench + summary */}
           <div className="w-full md:flex-1 flex flex-col gap-3">
             <div className="bg-[#0068471a] border border-amhc-green/30 rounded-xl p-3 text-xs text-amhc-dark font-medium">
               <strong>Sleep spelers</strong> van de bank naar het veld of direct op een andere speler om te wisselen. Speeltijden lopen mee met de wedstrijdklok.
             </div>
             <Bench benchIds={visibleBench} players={activePlayers} getTimer={getTimer} getBenchTimer={getBenchTimer} />
 
-            {/* Timer summary */}
             {activePlayers.some(p => getTimer(p.id) > 0 || getBenchTimer(p.id) > 0) && (
               <div className="bg-white rounded-2xl shadow-sm p-3 border border-gray-100">
                 <div className="flex items-center justify-between mb-2">
