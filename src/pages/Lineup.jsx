@@ -8,6 +8,8 @@ import {
   useSensors,
   useDroppable,
   useDraggable,
+  pointerWithin,
+  rectIntersection,
 } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
 import { useApp } from '../context/AppContext'
@@ -452,7 +454,7 @@ export default function Lineup() {
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 100, tolerance: 8 } }),
   )
 
   const handleDragStart = ({ active }) => setActiveId(active.id)
@@ -730,7 +732,7 @@ export default function Lineup() {
         </div>
       )}
 
-      <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+      <DndContext sensors={sensors} collisionDetection={pointerWithin} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
         <div className="flex flex-col md:flex-row gap-4 items-start">
 
           {/* Field */}
