@@ -185,6 +185,9 @@ export default function Lineup() {
 
   // Ignore remote updates while we're processing a local change
   const localChange = useRef(false)
+  // Track previous match to save snapshot on switch
+  const prevMatchRef = useRef('')
+  const syncedRef = useRef(false)
 
   // Initial fetch from Supabase
   useEffect(() => {
@@ -200,7 +203,9 @@ export default function Lineup() {
       if (data.clock) setClock(data.clock)
       if (data.score) setScoreState(data.score)
       if (data.selected_match_id) setSelectedMatchIdState(data.selected_match_id)
+      prevMatchRef.current = data.selected_match_id || ''
       setSynced(true)
+      syncedRef.current = true
     })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -374,6 +379,10 @@ export default function Lineup() {
     const newScore = typeof updater === 'function' ? updater(score) : updater
     withLocal(() => setScoreState(newScore))
     pushState({ score: newScore })
+    // Auto-save score to match so it shows in recent results
+    if (selectedMatchId) {
+      supabase.from('matches').update({ score_home: newScore.home, score_away: newScore.away }).eq('id', selectedMatchId)
+    }
   }
 
   const changeFormat = (f) => {
@@ -422,28 +431,77 @@ export default function Lineup() {
     setTimeout(() => setSavedMsg(''), 2000)
   }
 
-  // Load saved lineup when match changes
+  // Save snapshot of current match and load new match state on switch
   useEffect(() => {
-    if (!selectedMatchId) return
-    const match = matches.find(m => m.id === selectedMatchId)
-    if (match?.scoreHome != null) {
-      const newScore = { home: match.scoreHome, away: match.scoreAway ?? 0 }
-      withLocal(() => setScoreState(newScore))
+    if (!syncedRef.current) return
+    const prevId = prevMatchRef.current
+    prevMatchRef.current = selectedMatchId
+
+    // Save snapshot of previous match
+    if (prevId && prevId !== selectedMatchId) {
+      const snapshot = { positions, bench, selectedPlayers, timers, benchTimers, clock, score, format }
+      supabase.from('matches').update({ lineup_snapshot: snapshot }).eq('id', prevId)
     }
-    if (match?.attendees?.length) {
-      withLocal(() => setSelectedPlayers(match.attendees))
+
+    if (!selectedMatchId) {
+      // No match selected — reset everything
+      const newPositions = getPositions(format)
+      withLocal(() => {
+        setPositions(newPositions)
+        setBench(activePlayers.map(p => p.id))
+        setSelectedPlayers(activePlayers.map(p => p.id))
+        setTimers({})
+        setBenchTimers({})
+        setClock({ running: false, half: 1, elapsed: 0, startTimestamp: null })
+        setScoreState({ home: 0, away: 0 })
+      })
+      return
     }
-    if (!match?.lineup?.length) return
-    const newPositions = getPositions(format).map(pos => {
-      const saved = match.lineup.find(l => l.positionId === pos.id)
-      return saved ? { ...pos, playerId: saved.playerId } : pos
-    })
-    const onFieldSet = new Set(newPositions.map(p => p.playerId).filter(Boolean))
-    const attendees = match.attendees?.length ? match.attendees : activePlayers.map(p => p.id)
-    const newBench = attendees.filter(id => !onFieldSet.has(id))
-    withLocal(() => {
-      setPositions(newPositions)
-      setBench(newBench)
+
+    // Load state for newly selected match
+    supabase.from('matches').select('*').eq('id', selectedMatchId).single().then(({ data: match }) => {
+      if (!match) return
+      const snap = match.lineup_snapshot
+
+      if (snap && Object.keys(snap).length > 0) {
+        // Restore full saved snapshot
+        const f = snap.format || format
+        withLocal(() => {
+          if (snap.format) setFormatState(f)
+          setPositions(snap.positions?.length ? snap.positions : getPositions(f))
+          setBench(snap.bench || [])
+          setSelectedPlayers(snap.selectedPlayers || activePlayers.map(p => p.id))
+          setTimers(snap.timers || {})
+          setBenchTimers(snap.benchTimers || {})
+          setClock(snap.clock || { running: false, half: 1, elapsed: 0, startTimestamp: null })
+          setScoreState(snap.score || { home: 0, away: 0 })
+        })
+      } else {
+        // Fresh start for this match
+        const attendees = match.attendees?.length ? match.attendees : activePlayers.map(p => p.id)
+        const newPositions = getPositions(format)
+        let loadedPositions = newPositions
+        let loadedBench = attendees
+
+        if (match.lineup?.length) {
+          loadedPositions = newPositions.map(pos => {
+            const saved = match.lineup.find(l => l.positionId === pos.id)
+            return saved ? { ...pos, playerId: saved.playerId } : pos
+          })
+          const onFieldSet = new Set(loadedPositions.map(p => p.playerId).filter(Boolean))
+          loadedBench = attendees.filter(id => !onFieldSet.has(id))
+        }
+
+        withLocal(() => {
+          setPositions(loadedPositions)
+          setBench(loadedBench)
+          setSelectedPlayers(attendees)
+          setTimers({})
+          setBenchTimers({})
+          setClock({ running: false, half: 1, elapsed: 0, startTimestamp: null })
+          setScoreState(match.score_home != null ? { home: match.score_home, away: match.score_away ?? 0 } : { home: 0, away: 0 })
+        })
+      }
     })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedMatchId])

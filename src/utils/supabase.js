@@ -24,6 +24,7 @@ export const fromDb = {
     lineup: row.lineup || [],
     attendees: row.attendees || [],
     attendance: row.attendance || [],
+    lineupSnapshot: row.lineup_snapshot || {},
   }),
 }
 

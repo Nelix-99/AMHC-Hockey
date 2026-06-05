@@ -24,11 +24,11 @@ export const POSITIONS_7 = [
 
 export const POSITIONS_6 = [
   { id: 'gk', label: 'GK', x: 50,   y: 86 },
-  { id: 'd1', label: 'D',  x: 28,   y: 71 },
-  { id: 'd2', label: 'D',  x: 72,   y: 71 },
-  { id: 'm1', label: 'M',  x: 30,   y: 51 },
-  { id: 'm2', label: 'M',  x: 70,   y: 51 },
-  { id: 'f1', label: 'V',  x: 50,   y: 26 },
+  { id: 'd1', label: 'D',  x: 28,   y: 69 },
+  { id: 'd2', label: 'D',  x: 72,   y: 69 },
+  { id: 'm1', label: 'M',  x: 50,   y: 51 },
+  { id: 'f1', label: 'V',  x: 28,   y: 30 },
+  { id: 'f2', label: 'V',  x: 72,   y: 30 },
 ]
 
 export const POSITIONS_5 = [
