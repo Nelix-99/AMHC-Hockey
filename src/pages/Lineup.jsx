@@ -231,6 +231,37 @@ export default function Lineup() {
     return () => clearInterval(id)
   }, [])
 
+  // Auto-stop when half time runs out
+  useEffect(() => {
+    if (!clock.running) return
+    const elapsed = clock.elapsed + (clock.startTimestamp != null ? Date.now() - clock.startTimestamp : 0)
+    if (elapsed < HALF_DURATION_MS) return
+
+    const now = Date.now()
+    const fieldIds = positions.filter(p => p.playerId).map(p => p.playerId)
+    const benchIds = bench.filter(id => selectedPlayers.includes(id))
+
+    const newTimers = { ...timers }
+    for (const pid of fieldIds) {
+      const t = newTimers[pid] || { startTime: null, accumulated: 0 }
+      newTimers[pid] = { startTime: null, accumulated: t.accumulated + (t.startTime != null ? now - t.startTime : 0) }
+    }
+    const newBenchTimers = { ...benchTimers }
+    for (const pid of benchIds) {
+      const t = newBenchTimers[pid] || { startTime: null, accumulated: 0 }
+      newBenchTimers[pid] = { startTime: null, accumulated: t.accumulated + (t.startTime != null ? now - t.startTime : 0) }
+    }
+    const newClock = { ...clock, running: false, elapsed: HALF_DURATION_MS, startTimestamp: null }
+
+    withLocal(() => {
+      setTimers(newTimers)
+      setBenchTimers(newBenchTimers)
+      setClock(newClock)
+    })
+    pushState({ timers: newTimers, bench_timers: newBenchTimers, clock: newClock })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tick])
+
   const withLocal = (fn) => {
     localChange.current = true
     fn()
