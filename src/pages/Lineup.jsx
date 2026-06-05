@@ -466,10 +466,13 @@ export default function Lineup() {
       if (snap && Object.keys(snap).length > 0) {
         // Restore full saved snapshot
         const f = snap.format || format
+        const snapPositions = snap.positions?.length ? snap.positions : getPositions(f)
+        const snapOnField = new Set(snapPositions.map(p => p.playerId).filter(Boolean))
+        const snapBench = [...new Set(snap.bench || [])].filter(id => !snapOnField.has(id))
         withLocal(() => {
           if (snap.format) setFormatState(f)
-          setPositions(snap.positions?.length ? snap.positions : getPositions(f))
-          setBench(snap.bench || [])
+          setPositions(snapPositions)
+          setBench(snapBench)
           setSelectedPlayers(snap.selectedPlayers || activePlayers.map(p => p.id))
           setTimers(snap.timers || {})
           setBenchTimers(snap.benchTimers || {})
@@ -488,8 +491,10 @@ export default function Lineup() {
             const saved = match.lineup.find(l => l.positionId === pos.id)
             return saved ? { ...pos, playerId: saved.playerId } : pos
           })
-          const onFieldSet = new Set(loadedPositions.map(p => p.playerId).filter(Boolean))
-          loadedBench = attendees.filter(id => !onFieldSet.has(id))
+          const freshOnField = new Set(loadedPositions.map(p => p.playerId).filter(Boolean))
+          loadedBench = [...new Set(attendees)].filter(id => !freshOnField.has(id))
+        } else {
+          loadedBench = [...new Set(loadedBench)]
         }
 
         withLocal(() => {
@@ -617,7 +622,8 @@ export default function Lineup() {
 
   const activePlayer = activeId ? activePlayers.find(p => p.id === activeId) : null
   const sortedMatches = [...matches].sort((a, b) => a.date.localeCompare(b.date))
-  const visibleBench = bench.filter(id => selectedPlayers.includes(id))
+  const onFieldSet = new Set(positions.map(p => p.playerId).filter(Boolean))
+  const visibleBench = [...new Set(bench)].filter(id => selectedPlayers.includes(id) && !onFieldSet.has(id))
   const selectedMatch = matches.find(m => m.id === selectedMatchId)
 
   const MONTHS_SHORT = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec']
