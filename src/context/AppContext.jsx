@@ -65,7 +65,7 @@ export function AppProvider({ children }) {
   }
 
   const updateMatch = async (match) => {
-    await supabase.from('matches').update(toDb.match(match)).eq('id', match.id)
+    await supabase.from('matches').update(toDb.matchPartial(match)).eq('id', match.id)
   }
 
   const deleteMatch = async (id) => {
@@ -73,7 +73,6 @@ export function AppProvider({ children }) {
   }
 
   const importMatches = async (newMatches) => {
-    await supabase.from('matches').delete().neq('id', '')
     const rows = newMatches.map(m => toDb.match({ ...m, id: m.id || crypto.randomUUID() }))
     await supabase.from('matches').insert(rows)
   }

@@ -117,7 +117,7 @@ export default function Matches() {
       return true
     })
 
-  const played = matches.filter(m => m.scoreHome != null)
+  const played = matches.filter(m => m.scoreHome != null && m.scoreAway != null)
   const wins   = played.filter(m => (m.isHome ? m.scoreHome > m.scoreAway : m.scoreAway > m.scoreHome)).length
   const losses = played.filter(m => (m.isHome ? m.scoreHome < m.scoreAway : m.scoreAway < m.scoreHome)).length
   const draws  = played.filter(m => m.scoreHome === m.scoreAway).length

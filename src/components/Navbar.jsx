@@ -3,9 +3,9 @@ import { NavLink, useNavigate } from 'react-router-dom'
 
 const links = [
   { to: '/',        label: 'Home',        public: true },
-  { to: '/lineup',  label: 'Lineup' },
+  { to: '/lineup',  label: 'Opstelling' },
   { to: '/matches', label: 'Wedstrijden' },
-  { to: '/admin',   label: 'Admin' },
+  { to: '/admin',   label: 'Beheer' },
 ]
 
 export default function Navbar() {

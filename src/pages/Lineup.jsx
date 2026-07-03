@@ -153,15 +153,6 @@ function formatClockTime(ms) {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
 }
 
-// ── Supabase sync helper ─────────────────────────────────────────────────────
-
-async function pushState(patch) {
-  await supabase
-    .from('lineup_state')
-    .update({ ...patch, updated_at: new Date().toISOString() })
-    .eq('id', 1)
-}
-
 // ── Main Lineup page ─────────────────────────────────────────────────────────
 
 export default function Lineup() {
@@ -182,6 +173,15 @@ export default function Lineup() {
   const [savedMsg, setSavedMsg] = useState('')
   const [showSelection, setShowSelection] = useState(false)
   const [synced, setSynced] = useState(false)
+  const [syncError, setSyncError] = useState(false)
+
+  const pushState = async (patch) => {
+    const { error } = await supabase
+      .from('lineup_state')
+      .update({ ...patch, updated_at: new Date().toISOString() })
+      .eq('id', 1)
+    setSyncError(!!error)
+  }
 
   // Ignore remote updates while we're processing a local change
   const localChange = useRef(false)
@@ -645,6 +645,14 @@ export default function Lineup() {
 
   return (
     <div className="max-w-6xl mx-auto px-3 py-6">
+
+      {/* Sync error banner */}
+      {syncError && (
+        <div className="mb-4 bg-red-50 border-2 border-red-200 text-red-700 rounded-xl px-4 py-2.5 text-sm font-semibold flex items-center gap-2">
+          <span className="text-base">⚠️</span>
+          Wijzigingen konden niet worden gesynchroniseerd — controleer je internetverbinding.
+        </div>
+      )}
 
       {/* Page header row */}
       <div className="flex flex-wrap items-center gap-2 mb-4">

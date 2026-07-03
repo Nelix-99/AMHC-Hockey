@@ -14,14 +14,14 @@ export default function Home() {
 
   const today = new Date().toISOString().slice(0, 10)
   const activePlayers = players.filter(p => !p.archived)
-  const upcomingMatches = matches
-    .filter(m => m.date >= today)
+  const allUpcoming = matches
+    .filter(m => m.date >= today && m.scoreHome == null)
     .sort((a, b) => a.date.localeCompare(b.date))
-    .slice(0, 3)
-  const recentResults = matches
-    .filter(m => m.date < today && m.scoreHome !== null)
+  const allResults = matches
+    .filter(m => m.scoreHome != null)
     .sort((a, b) => b.date.localeCompare(a.date))
-    .slice(0, 3)
+  const upcomingMatches = allUpcoming.slice(0, 3)
+  const recentResults = allResults.slice(0, 3)
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
@@ -91,10 +91,10 @@ export default function Home() {
           {/* Stats */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
             {[
-              { label: 'Spelers',     value: activePlayers.length,  color: '#006847' },
-              { label: 'Wedstrijden', value: matches.length,         color: '#3b82f6' },
-              { label: 'Aankomend',   value: upcomingMatches.length, color: '#f97316' },
-              { label: 'Uitslagen',   value: recentResults.length,   color: '#a855f7' },
+              { label: 'Spelers',     value: activePlayers.length, color: '#006847' },
+              { label: 'Wedstrijden', value: matches.length,       color: '#101010' },
+              { label: 'Aankomend',   value: allUpcoming.length,   color: '#008a5e' },
+              { label: 'Uitslagen',   value: allResults.length,    color: '#46484a' },
             ].map(stat => (
               <div key={stat.label} className="bg-white rounded-xl shadow-sm p-3 text-center" style={{ borderTop: `3px solid ${stat.color}` }}>
                 <div className="text-xl font-bold text-amhc-black">{stat.value}</div>

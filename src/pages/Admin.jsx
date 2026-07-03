@@ -160,7 +160,7 @@ function ScheduleTab() {
     try {
       const imported = await parseMatchCSV(file)
       if (window.confirm(`${imported.length} wedstrijden importeren? Ze worden toegevoegd aan het huidige programma.`)) {
-        importMatches([...matches, ...imported])
+        importMatches(imported)
       }
     } catch (err) { setCsvError(err.message) }
     finally { if (csvRef.current) csvRef.current.value = '' }

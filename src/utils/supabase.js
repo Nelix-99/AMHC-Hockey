@@ -48,4 +48,19 @@ export const toDb = {
     attendees: m.attendees || [],
     attendance: m.attendance || [],
   }),
+  // Only maps keys that are actually present, so a partial update never
+  // wipes fields the caller didn't touch (score, lineup, attendance, …)
+  matchPartial: (m) => {
+    const row = {}
+    if ('date' in m) row.date = m.date
+    if ('opponent' in m) row.opponent = m.opponent
+    if ('isHome' in m) row.is_home = m.isHome
+    if ('location' in m) row.location = m.location || ''
+    if ('scoreHome' in m) row.score_home = m.scoreHome ?? null
+    if ('scoreAway' in m) row.score_away = m.scoreAway ?? null
+    if ('lineup' in m) row.lineup = m.lineup || []
+    if ('attendees' in m) row.attendees = m.attendees || []
+    if ('attendance' in m) row.attendance = m.attendance || []
+    return row
+  },
 }
