@@ -3,23 +3,23 @@
 
 export const POSITIONS_8 = [
   { id: 'gk', label: 'GK', x: 50,   y: 86 },
-  { id: 'd1', label: 'D',  x: 28,   y: 71 },
-  { id: 'd2', label: 'D',  x: 72,   y: 71 },
-  { id: 'm1', label: 'M',  x: 16,   y: 51 },
-  { id: 'm2', label: 'M',  x: 50,   y: 51 },
-  { id: 'm3', label: 'M',  x: 84,   y: 51 },
-  { id: 'f1', label: 'V',  x: 30,   y: 27 },
-  { id: 'f2', label: 'V',  x: 70,   y: 27 },
+  { id: 'd1', label: 'D',  x: 20,   y: 71 },
+  { id: 'd2', label: 'D',  x: 50,   y: 71 },
+  { id: 'd3', label: 'D',  x: 80,   y: 71 },
+  { id: 'm1', label: 'M',  x: 50,   y: 51 },
+  { id: 'f1', label: 'V',  x: 20,   y: 27 },
+  { id: 'f2', label: 'V',  x: 50,   y: 27 },
+  { id: 'f3', label: 'V',  x: 80,   y: 27 },
 ]
 
 export const POSITIONS_7 = [
   { id: 'gk', label: 'GK', x: 50,   y: 86 },
   { id: 'd1', label: 'D',  x: 28,   y: 71 },
   { id: 'd2', label: 'D',  x: 72,   y: 71 },
-  { id: 'm1', label: 'M',  x: 18,   y: 51 },
-  { id: 'm2', label: 'M',  x: 50,   y: 52 },
-  { id: 'm3', label: 'M',  x: 82,   y: 51 },
-  { id: 'f1', label: 'V',  x: 50,   y: 26 },
+  { id: 'm1', label: 'M',  x: 28,   y: 51 },
+  { id: 'm2', label: 'M',  x: 72,   y: 51 },
+  { id: 'f1', label: 'V',  x: 28,   y: 27 },
+  { id: 'f2', label: 'V',  x: 72,   y: 27 },
 ]
 
 export const POSITIONS_6 = [
@@ -63,4 +63,6 @@ export function getInitials(name = '') {
   return name.split(' ').filter(Boolean).map(w => w[0].toUpperCase()).slice(0, 2).join('')
 }
 
-export const HALF_DURATION_MS = 25 * 60 * 1000 // 25 minutes
+export const HALF_DURATION_MS = 30 * 60 * 1000 // 30 minutes
+
+export const TEAM_NAME = 'MO10-Wit'

@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useApp } from '../context/AppContext'
+import { TEAM_NAME } from '../utils/positions'
 
 const MONTHS = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec']
 
@@ -48,7 +49,7 @@ export default function Home() {
                   className="inline-block text-xs font-bold px-2.5 py-1 rounded-full text-white tracking-wide"
                   style={{ backgroundColor: '#006847' }}
                 >
-                  MO-9 Wit
+                  {TEAM_NAME}
                 </span>
                 <a
                   href="https://chat.whatsapp.com/Ksq237wi7gK2rEdD0ETp5D"
