@@ -11,12 +11,26 @@ import {
   pointerWithin,
   rectIntersection,
 } from '@dnd-kit/core'
-import { CSS } from '@dnd-kit/utilities'
 import { useApp } from '../context/AppContext'
 import { getPositions, formatTime, FORMAT_OPTIONS, HALF_DURATION_MS } from '../utils/positions'
 import { supabase } from '../utils/supabase'
 import FieldSVG from '../components/FieldSVG'
 import PlayerAvatar from '../components/PlayerAvatar'
+
+function centerDragOverlay({ transform, activatorEvent, activeNodeRect, draggingNodeRect }) {
+  if (!activatorEvent || !activeNodeRect || !draggingNodeRect) return transform
+
+  const point = 'touches' in activatorEvent
+    ? (activatorEvent.touches[0] || activatorEvent.changedTouches[0])
+    : activatorEvent
+  if (!point) return transform
+
+  return {
+    ...transform,
+    x: point.clientX - activeNodeRect.left - draggingNodeRect.width / 2,
+    y: point.clientY - activeNodeRect.top - draggingNodeRect.height / 2,
+  }
+}
 
 // ── Bench chip (draggable only) ──────────────────────────────────────────────
 
@@ -28,18 +42,14 @@ function DraggableChip({ player, fromPosition, timer, benchTimer = 0 }) {
 
   return (
     <div
-      className="flex items-center gap-2 bg-white border-2 border-gray-100 rounded-xl px-2 py-1.5 select-none hover:border-amhc-green/40 hover:shadow-md transition-all"
+      ref={setNodeRef}
+      style={{ opacity: isDragging ? 0.35 : 1, touchAction: 'none' }}
+      {...listeners}
+      {...attributes}
+      className="w-fit max-w-full flex items-center gap-2 bg-white border-2 border-gray-100 rounded-xl px-2 py-1.5 cursor-grab active:cursor-grabbing select-none hover:border-amhc-green/40 hover:shadow-md transition-all"
     >
-      <div
-        ref={setNodeRef}
-        style={{ transform: CSS.Translate.toString(transform), opacity: isDragging ? 0.35 : 1, touchAction: 'none' }}
-        {...listeners}
-        {...attributes}
-        className="cursor-grab active:cursor-grabbing rounded-full"
-      >
-        <PlayerAvatar player={player} size="sm" />
-      </div>
-      <span className="text-sm font-medium text-gray-800 truncate max-w-[90px]">{player.name}</span>
+      <PlayerAvatar player={player} size="sm" />
+      <span className="text-sm font-medium text-gray-800 truncate max-w-[80px]">{player.name}</span>
       <div className="ml-auto flex flex-col items-end gap-0.5">
         {timer > 0 && <span className="text-[10px] text-amhc-green font-mono font-semibold leading-none">{formatTime(timer)}</span>}
         {benchTimer > 0 && <span className="text-[10px] text-orange-400 font-mono font-semibold leading-none">B {formatTime(benchTimer)}</span>}
@@ -56,22 +66,17 @@ function FieldChip({ player, posId, timer }) {
     data: { fromPosition: posId },
   })
   const { setNodeRef: setDropRef, isOver } = useDroppable({ id: posId })
-  const setDropZoneRef = (node) => { setDropRef(node) }
+  const setRef = (node) => { setDragRef(node); setDropRef(node) }
 
   return (
     <div
-      ref={setDropZoneRef}
-      className={`flex flex-col items-center select-none rounded-xl p-1 transition-colors ${isOver ? 'bg-yellow-300/30 ring-2 ring-yellow-300 ring-offset-1' : ''}`}
+      ref={setRef}
+      style={{ opacity: isDragging ? 0.35 : 1, touchAction: 'none' }}
+      {...listeners}
+      {...attributes}
+      className={`flex flex-col items-center cursor-grab active:cursor-grabbing select-none rounded-xl p-1 transition-colors ${isOver ? 'bg-yellow-300/30 ring-2 ring-yellow-300 ring-offset-1' : ''}`}
     >
-      <div
-        ref={setDragRef}
-        style={{ transform: CSS.Translate.toString(transform), opacity: isDragging ? 0.35 : 1, touchAction: 'none' }}
-        {...listeners}
-        {...attributes}
-        className="cursor-grab active:cursor-grabbing rounded-full"
-      >
-        <PlayerAvatar player={player} size="sm" />
-      </div>
+      <PlayerAvatar player={player} size="sm" />
       <span className="text-white text-[9px] font-medium mt-0.5 text-center leading-tight max-w-[52px] truncate drop-shadow">
         {player.name.split(' ')[0]}
       </span>
@@ -917,7 +922,7 @@ export default function Lineup() {
           </div>
         </div>
 
-        <DragOverlay dropAnimation={null}>
+        <DragOverlay dropAnimation={null} modifiers={[centerDragOverlay]}>
           {activePlayer ? <DragGhost player={activePlayer} /> : null}
         </DragOverlay>
       </DndContext>
