@@ -28,13 +28,17 @@ function DraggableChip({ player, fromPosition, timer, benchTimer = 0 }) {
 
   return (
     <div
-      ref={setNodeRef}
-      style={{ transform: CSS.Translate.toString(transform), opacity: isDragging ? 0.35 : 1, touchAction: 'none' }}
-      {...listeners}
-      {...attributes}
-      className="flex items-center gap-2 bg-white border-2 border-gray-100 rounded-xl px-2 py-1.5 cursor-grab active:cursor-grabbing shadow-sm select-none hover:border-amhc-green/40 hover:shadow-md transition-all"
+      className="flex items-center gap-2 bg-white border-2 border-gray-100 rounded-xl px-2 py-1.5 select-none hover:border-amhc-green/40 hover:shadow-md transition-all"
     >
-      <PlayerAvatar player={player} size="sm" />
+      <div
+        ref={setNodeRef}
+        style={{ transform: CSS.Translate.toString(transform), opacity: isDragging ? 0.35 : 1, touchAction: 'none' }}
+        {...listeners}
+        {...attributes}
+        className="cursor-grab active:cursor-grabbing rounded-full"
+      >
+        <PlayerAvatar player={player} size="sm" />
+      </div>
       <span className="text-sm font-medium text-gray-800 truncate max-w-[90px]">{player.name}</span>
       <div className="ml-auto flex flex-col items-end gap-0.5">
         {timer > 0 && <span className="text-[10px] text-amhc-green font-mono font-semibold leading-none">{formatTime(timer)}</span>}
@@ -52,17 +56,22 @@ function FieldChip({ player, posId, timer }) {
     data: { fromPosition: posId },
   })
   const { setNodeRef: setDropRef, isOver } = useDroppable({ id: posId })
-  const setRef = (node) => { setDragRef(node); setDropRef(node) }
+  const setDropZoneRef = (node) => { setDropRef(node) }
 
   return (
     <div
-      ref={setRef}
-      style={{ transform: CSS.Translate.toString(transform), opacity: isDragging ? 0.35 : 1, touchAction: 'none' }}
-      {...listeners}
-      {...attributes}
-      className={`flex flex-col items-center cursor-grab active:cursor-grabbing select-none rounded-xl p-1 transition-colors ${isOver ? 'bg-yellow-300/30 ring-2 ring-yellow-300 ring-offset-1' : ''}`}
+      ref={setDropZoneRef}
+      className={`flex flex-col items-center select-none rounded-xl p-1 transition-colors ${isOver ? 'bg-yellow-300/30 ring-2 ring-yellow-300 ring-offset-1' : ''}`}
     >
-      <PlayerAvatar player={player} size="sm" />
+      <div
+        ref={setDragRef}
+        style={{ transform: CSS.Translate.toString(transform), opacity: isDragging ? 0.35 : 1, touchAction: 'none' }}
+        {...listeners}
+        {...attributes}
+        className="cursor-grab active:cursor-grabbing rounded-full"
+      >
+        <PlayerAvatar player={player} size="sm" />
+      </div>
       <span className="text-white text-[9px] font-medium mt-0.5 text-center leading-tight max-w-[52px] truncate drop-shadow">
         {player.name.split(' ')[0]}
       </span>
@@ -139,12 +148,7 @@ function Bench({ benchIds, players, getTimer, getBenchTimer }) {
 
 function DragGhost({ player }) {
   if (!player) return null
-  return (
-    <div className="flex items-center gap-2 bg-white border-2 border-amhc-green rounded-xl px-3 py-2 shadow-xl pointer-events-none">
-      <PlayerAvatar player={player} size="sm" />
-      <span className="text-sm font-medium text-gray-800">{player.name}</span>
-    </div>
-  )
+  return <PlayerAvatar player={player} size="sm" />
 }
 
 function formatClockTime(ms) {
