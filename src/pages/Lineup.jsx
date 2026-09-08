@@ -704,6 +704,19 @@ export default function Lineup() {
             ))}
           </select>
         </div>
+      ) : !selectedMatch ? (
+        <div className="mb-4 rounded-2xl border-2 px-4 py-3 flex items-center gap-3" style={{ borderColor: '#dc2626', backgroundColor: '#fef2f2' }}>
+          <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: '#dc2626' }} />
+          <p className="flex-1 min-w-0 text-sm font-semibold text-red-800">
+            De geselecteerde wedstrijd bestaat niet meer.
+          </p>
+          <button
+            onClick={() => setSelectedMatchId('')}
+            className="shrink-0 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-red-700 transition-colors"
+          >
+            Selectie wissen
+          </button>
+        </div>
       ) : (
         <div className="mb-4 rounded-2xl border px-4 py-3 flex items-center gap-3" style={{ borderColor: '#006847', backgroundColor: '#f0faf5' }}>
           <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: '#006847' }} />
