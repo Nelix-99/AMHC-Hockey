@@ -27,8 +27,8 @@ function centerDragOverlay({ transform, activatorEvent, activeNodeRect, dragging
 
   return {
     ...transform,
-    x: point.clientX - activeNodeRect.left - draggingNodeRect.width / 2,
-    y: point.clientY - activeNodeRect.top - draggingNodeRect.height / 2,
+    x: transform.x + point.clientX - activeNodeRect.left - draggingNodeRect.width / 2,
+    y: transform.y + point.clientY - activeNodeRect.top - draggingNodeRect.height / 2,
   }
 }
 
@@ -46,10 +46,10 @@ function DraggableChip({ player, fromPosition, timer, benchTimer = 0 }) {
       style={{ opacity: isDragging ? 0.35 : 1, touchAction: 'none' }}
       {...listeners}
       {...attributes}
-      className="w-fit max-w-full flex items-center gap-2 bg-white border-2 border-gray-100 rounded-xl px-2 py-1.5 cursor-grab active:cursor-grabbing select-none hover:border-amhc-green/40 hover:shadow-md transition-all"
+      className="w-full flex items-center gap-2 bg-white border-2 border-gray-100 rounded-xl px-2 py-1.5 cursor-grab active:cursor-grabbing select-none hover:border-amhc-green/40 hover:shadow-md transition-all"
     >
       <PlayerAvatar player={player} size="sm" />
-      <span className="text-sm font-medium text-gray-800 truncate max-w-[80px]">{player.name}</span>
+      <span className="flex-1 min-w-0 text-sm font-medium text-gray-800 truncate">{player.name}</span>
       <div className="ml-auto flex flex-col items-end gap-0.5">
         {timer > 0 && <span className="text-[10px] text-amhc-green font-mono font-semibold leading-none">{formatTime(timer)}</span>}
         {benchTimer > 0 && <span className="text-[10px] text-orange-400 font-mono font-semibold leading-none">B {formatTime(benchTimer)}</span>}
@@ -121,7 +121,7 @@ function Bench({ benchIds, players, getTimer, getBenchTimer }) {
   return (
     <div
       ref={setNodeRef}
-      className={`flex-1 overflow-y-auto rounded-2xl border-2 p-3 transition-colors min-h-[200px] ${
+      className={`w-full md:w-[190px] flex-none overflow-y-auto rounded-2xl border-2 p-3 transition-colors min-h-[200px] ${
         isOver ? 'border-amhc-green bg-[#0068470d]' : 'border-dashed border-gray-300 bg-gray-50'
       }`}
     >
@@ -183,6 +183,7 @@ export default function Lineup() {
   const [showSelection, setShowSelection] = useState(false)
   const [synced, setSynced] = useState(false)
   const [syncError, setSyncError] = useState(false)
+  const validSelectedPlayers = [...new Set(selectedPlayers)].filter(id => activePlayers.some(player => player.id === id))
 
   const pushState = async (patch) => {
     const { error } = await supabase
@@ -435,7 +436,7 @@ export default function Lineup() {
   const saveLineup = () => {
     if (!selectedMatchId) return
     const lineup = positions.filter(p => p.playerId).map(p => ({ positionId: p.id, playerId: p.playerId }))
-    updateMatch({ id: selectedMatchId, lineup, scoreHome: score.home, scoreAway: score.away, attendees: selectedPlayers })
+    updateMatch({ id: selectedMatchId, lineup, scoreHome: score.home, scoreAway: score.away, attendees: validSelectedPlayers })
     setSavedMsg('Opstelling opgeslagen!')
     setTimeout(() => setSavedMsg(''), 2000)
   }
@@ -632,7 +633,7 @@ export default function Lineup() {
   const activePlayer = activeId ? activePlayers.find(p => p.id === activeId) : null
   const sortedMatches = [...matches].sort((a, b) => a.date.localeCompare(b.date))
   const onFieldSet = new Set(positions.map(p => p.playerId).filter(Boolean))
-  const visibleBench = [...new Set(bench)].filter(id => selectedPlayers.includes(id) && !onFieldSet.has(id))
+  const visibleBench = [...new Set(bench)].filter(id => validSelectedPlayers.includes(id) && !onFieldSet.has(id))
   const selectedMatch = matches.find(m => m.id === selectedMatchId)
 
   const MONTHS_SHORT = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec']
@@ -756,7 +757,7 @@ export default function Lineup() {
       <div className="mb-4 bg-white rounded-xl border border-gray-100 shadow-sm">
         <div className="flex items-center gap-2 px-3 py-2">
           <span className="text-xs font-semibold text-amhc-gray">
-            Selectie <span className="text-amhc-green font-bold">{selectedPlayers.length}/{activePlayers.length}</span>
+            Selectie <span className="text-amhc-green font-bold">{validSelectedPlayers.length}/{activePlayers.length}</span>
           </span>
           <div className="flex items-center gap-1 ml-auto">
             <button onClick={selectAll} className="text-[11px] text-amhc-green font-semibold px-2 py-0.5 rounded hover:bg-[#0068471a] transition-colors">Alle</button>
@@ -774,7 +775,7 @@ export default function Lineup() {
         {showSelection && (
           <div className="flex flex-wrap gap-1.5 px-3 pb-3 pt-1 border-t border-gray-100">
             {activePlayers.map(p => {
-              const present = selectedPlayers.includes(p.id)
+              const present = validSelectedPlayers.includes(p.id)
               return (
                 <button
                   key={p.id}
