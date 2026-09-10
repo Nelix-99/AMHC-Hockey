@@ -1,5 +1,6 @@
 // All positions as % of the SVG viewBox (300 × 500).
-// Field occupies x: 10–290, y: 20–480.
+// Field occupies x: 10–290, y: 30–470; the bands above and below carry the
+// end-zone labels and goals (see FieldSVG).
 
 export const POSITIONS_8 = [
   { id: 'gk', label: 'GK', x: 50,   y: 86 },
@@ -66,3 +67,5 @@ export function getInitials(name = '') {
 export const HALF_DURATION_MS = 30 * 60 * 1000 // 30 minutes
 
 export const TEAM_NAME = 'MO10-Wit'
+
+export const AMHC_LOGO_URL = 'https://irp.cdn-website.com/783c9bc2/dms3rep/multi/amhc-logo.png'

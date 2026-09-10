@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
+import { AMHC_LOGO_URL } from '../utils/positions'
 
 const links = [
   { to: '/',        label: 'Home',        public: true },
@@ -33,7 +34,7 @@ export default function Navbar() {
         {/* Logo */}
         <NavLink to="/" className="flex items-center gap-2.5 shrink-0" onClick={() => setOpen(false)}>
           <img
-            src="https://irp.cdn-website.com/783c9bc2/dms3rep/multi/amhc-logo.png"
+            src={AMHC_LOGO_URL}
             alt="AMHC logo"
             className="h-9 w-9 object-contain flex-shrink-0"
             onError={e => { e.target.style.display = 'none' }}
