@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useApp } from '../context/AppContext'
-import { TEAM_NAME } from '../utils/positions'
+import { TEAM_NAME, AMHC_LOGO_URL } from '../utils/positions'
 import { hasResult, isFinished, todayISO } from '../utils/match'
 
 const MONTHS = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec']
@@ -35,7 +35,7 @@ export default function Home() {
         />
         <div className="relative flex items-center gap-4 p-6">
           <img
-            src="https://irp.cdn-website.com/783c9bc2/dms3rep/multi/amhc-logo.png"
+            src={AMHC_LOGO_URL}
             alt="AMHC"
             className="object-contain shrink-0"
             style={{ height: '56px', width: '56px' }}
@@ -56,7 +56,7 @@ export default function Home() {
                   href="https://chat.whatsapp.com/Ksq237wi7gK2rEdD0ETp5D"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full text-white transition-opacity hover:opacity-85"
+                  className="inline-flex items-center gap-1.5 text-xs font-bold px-3 min-h-[36px] rounded-full text-white transition-opacity hover:opacity-85"
                   style={{ backgroundColor: '#25D366' }}
                 >
                   <svg viewBox="0 0 24 24" fill="currentColor" className="w-3 h-3 shrink-0">
@@ -137,7 +137,7 @@ export default function Home() {
                   })}
                 </ul>
               )}
-              <Link to="/admin" className="mt-3 text-xs font-semibold hover:underline block" style={{ color: '#006847' }}>
+              <Link to="/admin" className="mt-2 inline-flex items-center min-h-[40px] text-xs font-semibold hover:underline" style={{ color: '#006847' }}>
                 Programma beheren →
               </Link>
             </div>
@@ -173,7 +173,7 @@ export default function Home() {
                   })}
                 </ul>
               )}
-              <Link to="/matches" className="mt-3 text-xs font-semibold hover:underline block" style={{ color: '#006847' }}>
+              <Link to="/matches" className="mt-2 inline-flex items-center min-h-[40px] text-xs font-semibold hover:underline" style={{ color: '#006847' }}>
                 Alle statistieken →
               </Link>
             </div>

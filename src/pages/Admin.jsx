@@ -41,7 +41,7 @@ function PlayersTab() {
     <div className="space-y-6">
       <div className="card">
         <h3 className="font-bold text-amhc-black mb-4">{editId ? 'Speler bewerken' : 'Speler toevoegen'}</h3>
-        <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3 items-end flex-wrap">
+        <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-end flex-wrap">
           <div className="flex-1 min-w-[180px]">
             <label className="block text-xs font-semibold text-amhc-gray mb-1 uppercase tracking-wide">Naam *</label>
             <input
@@ -60,7 +60,7 @@ function PlayersTab() {
               type="file"
               accept="image/*"
               onChange={handlePhoto}
-              className="text-sm text-gray-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-[#0068471a] file:text-amhc-green file:text-sm file:font-semibold hover:file:bg-amhc-green/20"
+              className="text-sm text-gray-500 file:mr-2 file:py-2.5 file:px-3 file:rounded-lg file:border-0 file:bg-[#0068471a] file:text-amhc-green file:text-sm file:font-semibold hover:file:bg-amhc-green/20"
             />
           </div>
           {form.photo && (
@@ -76,7 +76,7 @@ function PlayersTab() {
             </div>
           )}
           <div className="flex gap-2">
-            <button type="submit" className="bg-amhc-green hover:bg-brand-dark text-white px-5 py-2 rounded-xl font-bold transition-colors text-sm">
+            <button type="submit" className="bg-amhc-green hover:bg-brand-dark text-white px-5 min-h-[44px] rounded-xl font-bold transition-colors text-sm">
               {editId ? 'Opslaan' : 'Toevoegen'}
             </button>
             {editId && (
@@ -89,12 +89,12 @@ function PlayersTab() {
       </div>
 
       <div className="card">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 mb-4">
           <h3 className="font-bold text-amhc-black">
             Spelers <span className="text-amhc-green">({players.filter(p => !p.archived).length} actief)</span>
           </h3>
-          <label className="flex items-center gap-2 text-sm text-amhc-gray cursor-pointer select-none font-medium">
-            <input type="checkbox" checked={showArchived} onChange={e => setShowArchived(e.target.checked)} className="rounded accent-amhc-green" />
+          <label className="flex items-center gap-2 min-h-[44px] text-sm text-amhc-gray cursor-pointer select-none font-medium">
+            <input type="checkbox" checked={showArchived} onChange={e => setShowArchived(e.target.checked)} className="w-5 h-5 rounded accent-amhc-green" />
             Gearchiveerden tonen
           </label>
         </div>
@@ -112,11 +112,11 @@ function PlayersTab() {
                 </div>
                 <div className="flex gap-1 shrink-0">
                   <button onClick={() => startEdit(player)}
-                    className="text-[11px] text-amhc-green hover:text-amhc-dark px-2 py-1 rounded-lg hover:bg-[#0068471a] transition-colors font-semibold">
+                    className="text-[11px] text-amhc-green hover:text-amhc-dark px-2.5 min-h-[40px] rounded-lg hover:bg-[#0068471a] transition-colors font-semibold">
                     Bewerken
                   </button>
                   <button onClick={() => toggleArchivePlayer(player.id)}
-                    className="text-[11px] text-gray-400 hover:text-amhc-gray px-2 py-1 rounded-lg hover:bg-gray-100 transition-colors font-semibold">
+                    className="text-[11px] text-gray-400 hover:text-amhc-gray px-2.5 min-h-[40px] rounded-lg hover:bg-gray-100 transition-colors font-semibold">
                     {player.archived ? 'Herstellen' : 'Archiveren'}
                   </button>
                 </div>
@@ -221,7 +221,7 @@ function ScheduleTab() {
           Verwachte kolommen: <code className="bg-gray-100 px-1.5 py-0.5 rounded font-mono">date, opponent, home_away, location</code>
         </p>
         <input ref={csvRef} type="file" accept=".csv,text/csv" onChange={handleCSV}
-          className="text-sm text-gray-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-[#0068471a] file:text-amhc-green file:text-sm file:font-semibold hover:file:bg-amhc-green/20" />
+          className="text-sm text-gray-500 file:mr-2 file:py-2.5 file:px-3 file:rounded-lg file:border-0 file:bg-[#0068471a] file:text-amhc-green file:text-sm file:font-semibold hover:file:bg-amhc-green/20" />
         {csvError && <p className="text-red-500 text-sm mt-2 font-medium">{csvError}</p>}
       </div>
 
@@ -246,9 +246,9 @@ function ScheduleTab() {
                   </span>
                 </div>
                 <div className="flex gap-2 pl-24 sm:pl-0">
-                  <button onClick={() => startEdit(m)} className="text-xs text-amhc-green hover:text-amhc-dark px-3 py-1.5 rounded-lg hover:bg-[#0068471a] font-semibold">Bewerken</button>
+                  <button onClick={() => startEdit(m)} className="text-xs text-amhc-green hover:text-amhc-dark px-3 min-h-[40px] rounded-lg hover:bg-[#0068471a] font-semibold">Bewerken</button>
                   <button onClick={() => { if (window.confirm('Wedstrijd verwijderen?')) deleteMatch(m.id) }}
-                    className="text-xs text-red-400 hover:text-red-600 px-3 py-1.5 rounded-lg hover:bg-red-50 font-semibold">Verwijderen</button>
+                    className="text-xs text-red-400 hover:text-red-600 px-3 min-h-[40px] rounded-lg hover:bg-red-50 font-semibold">Verwijderen</button>
                 </div>
               </li>
             ))}
@@ -271,7 +271,7 @@ export default function Admin() {
       <div className="flex gap-1 bg-gray-200 p-1 rounded-xl mb-6 w-fit">
         {[['players', 'Spelers'], ['schedule', 'Programma']].map(([val, label]) => (
           <button key={val} onClick={() => setTab(val)}
-            className={`px-6 py-2 rounded-lg text-sm font-bold transition-colors ${tab === val ? 'bg-white shadow-sm text-amhc-black' : 'text-amhc-gray hover:text-amhc-black'}`}>
+            className={`px-6 min-h-[40px] rounded-lg text-sm font-bold transition-colors ${tab === val ? 'bg-white shadow-sm text-amhc-black' : 'text-amhc-gray hover:text-amhc-black'}`}>
             {label}
           </button>
         ))}

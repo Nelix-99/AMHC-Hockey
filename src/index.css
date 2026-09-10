@@ -18,6 +18,25 @@ body {
   color: var(--amhc-black);
   font-family: 'Montserrat', Inter, sans-serif;
   min-height: 100vh;
+  /* dvh follows the collapsing browser chrome on iOS/Android; vh does not */
+  min-height: 100dvh;
+}
+
+/* Grey flash on every tap reads as lag on Android; the :active states cover it */
+button, a, select, input, label {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* iOS zooms the page in when a focused field is under 16px and never zooms
+   back out. Only touch devices need this, and only the controls that are
+   actually below 16px — the element+class selector is what lets it win over
+   Tailwind's own .text-sm / .text-xs. */
+@media (pointer: coarse) {
+  input.text-xs, input.text-sm,
+  select.text-xs, select.text-sm,
+  textarea.text-xs, textarea.text-sm {
+    font-size: 16px;
+  }
 }
 
 h1, h2, h3, h4 {

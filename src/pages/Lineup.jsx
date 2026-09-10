@@ -133,7 +133,7 @@ function Bench({ benchIds, players, getTimer, getBenchTimer, showHint, onToggleH
           onClick={onToggleHint}
           aria-label="Uitleg over wisselen"
           aria-expanded={showHint}
-          className={`ml-auto w-5 h-5 rounded-full border text-[10px] font-bold leading-none transition-colors ${
+          className={`ml-auto -my-1.5 w-8 h-8 shrink-0 flex items-center justify-center rounded-full border text-[10px] font-bold leading-none transition-colors ${
             showHint
               ? 'border-amhc-green text-amhc-green bg-[#0068471a]'
               : 'border-gray-300 text-gray-400 hover:border-gray-400 hover:text-gray-600'
@@ -775,20 +775,20 @@ export default function Lineup() {
         <select
           value={format}
           onChange={e => changeFormat(Number(e.target.value))}
-          className="border-2 border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-amhc-green transition-colors font-medium"
+          className="border-2 border-gray-200 rounded-xl px-3 min-h-[44px] text-sm focus:outline-none focus:border-amhc-green transition-colors font-medium"
         >
           {FORMAT_OPTIONS.map(opt => (
             <option key={opt.value} value={opt.value}>{opt.label}</option>
           ))}
         </select>
-        <button onClick={resetLineup} className="text-sm font-bold text-amhc-gray hover:text-amhc-black px-3 py-2 border-2 border-gray-200 rounded-xl hover:border-amhc-green/30 transition-colors">
+        <button onClick={resetLineup} className="text-sm font-bold text-amhc-gray hover:text-amhc-black px-3 min-h-[44px] border-2 border-gray-200 rounded-xl hover:border-amhc-green/30 transition-colors">
           Wissen
         </button>
-        <button onClick={resetTimers} className="text-sm font-bold text-amhc-gray hover:text-amhc-black px-3 py-2 border-2 border-gray-200 rounded-xl hover:border-amhc-green/30 transition-colors">
+        <button onClick={resetTimers} className="text-sm font-bold text-amhc-gray hover:text-amhc-black px-3 min-h-[44px] border-2 border-gray-200 rounded-xl hover:border-amhc-green/30 transition-colors">
           Tijden wissen
         </button>
         {selectedMatchId && (
-          <button onClick={saveLineup} className="w-full sm:w-auto text-xs bg-brand-green hover:bg-brand-dark text-white px-4 py-1.5 rounded-lg font-bold transition-colors shadow-sm">
+          <button onClick={saveLineup} className="w-full sm:w-auto text-xs bg-brand-green hover:bg-brand-dark text-white px-4 min-h-[44px] rounded-lg font-bold transition-colors shadow-sm">
             Opstelling opslaan
           </button>
         )}
@@ -833,20 +833,20 @@ export default function Lineup() {
           </button>
         </div>
       ) : (
-        <div className="mb-4 rounded-2xl border px-4 py-3 flex items-center gap-3" style={{ borderColor: '#006847', backgroundColor: '#f0faf5' }}>
-          <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: '#006847' }} />
-          <div className="flex-1 min-w-0">
-            <span className="font-bold text-amhc-black text-sm">
+        <div className="mb-4 rounded-2xl border px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3" style={{ borderColor: '#006847', backgroundColor: '#f0faf5' }}>
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: '#006847' }} />
+            <span className="font-bold text-amhc-black text-sm truncate">
               {fmtMatchDate(selectedMatch.date)} · {selectedMatch.opponent}
             </span>
-            <span className={`ml-2 text-xs px-2 py-0.5 rounded-md font-bold ${selectedMatch.isHome ? 'bg-[#0068471a] text-amhc-green' : 'bg-blue-50 text-blue-700'}`}>
+            <span className={`shrink-0 text-xs px-2 py-0.5 rounded-md font-bold ${selectedMatch.isHome ? 'bg-[#0068471a] text-amhc-green' : 'bg-blue-50 text-blue-700'}`}>
               {selectedMatch.isHome ? 'Thuis' : 'Uit'}
             </span>
           </div>
           <select
             value={selectedMatchId}
             onChange={e => setSelectedMatchId(e.target.value)}
-            className="border border-gray-200 rounded-lg px-2 py-1 text-xs focus:outline-none font-medium text-amhc-gray bg-white"
+            className="w-full sm:w-auto sm:max-w-[260px] min-h-[40px] border border-gray-200 rounded-lg px-2 text-xs focus:outline-none font-medium text-amhc-gray bg-white"
           >
             <option value="">— geen wedstrijd —</option>
             {sortedMatches.map(m => (
@@ -865,12 +865,12 @@ export default function Lineup() {
             Selectie <span className="text-amhc-green font-bold">{validSelectedPlayers.length}/{activePlayers.length}</span>
           </span>
           <div className="flex items-center gap-1 ml-auto">
-            <button onClick={selectAll} className="text-[11px] text-amhc-green font-semibold px-2 py-0.5 rounded hover:bg-[#0068471a] transition-colors">Alle</button>
+            <button onClick={selectAll} className="text-[11px] text-amhc-green font-semibold px-2.5 min-h-[40px] rounded hover:bg-[#0068471a] transition-colors">Alle</button>
             <span className="text-gray-200 text-xs">|</span>
-            <button onClick={clearAll} className="text-[11px] text-gray-400 font-semibold px-2 py-0.5 rounded hover:bg-gray-100 transition-colors">Geen</button>
+            <button onClick={clearAll} className="text-[11px] text-gray-400 font-semibold px-2.5 min-h-[40px] rounded hover:bg-gray-100 transition-colors">Geen</button>
             <button
               onClick={() => setShowSelection(s => !s)}
-              className="text-[11px] text-gray-500 font-semibold ml-1 px-2.5 py-0.5 border border-gray-200 rounded-lg hover:border-gray-300 transition-colors flex items-center gap-1"
+              className="text-[11px] text-gray-500 font-semibold ml-1 px-2.5 min-h-[40px] border border-gray-200 rounded-lg hover:border-gray-300 transition-colors flex items-center gap-1"
             >
               {showSelection ? 'Sluiten' : 'Bewerken'}
               <span className={`transition-transform ${showSelection ? 'rotate-180' : ''}`}>▾</span>
@@ -885,7 +885,7 @@ export default function Lineup() {
                 <button
                   key={p.id}
                   onClick={() => togglePlayerSelection(p.id)}
-                  className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold border transition-colors ${
+                  className={`flex items-center gap-1 px-2.5 min-h-[36px] rounded-lg text-xs font-semibold border transition-colors ${
                     present ? 'bg-[#0068471a] border-amhc-green text-amhc-dark' : 'bg-gray-50 border-gray-200 text-gray-400'
                   }`}
                 >
@@ -901,14 +901,14 @@ export default function Lineup() {
       {/* Match clock + score */}
       {selectedMatchId && (
         <div className="mb-4 card">
-          <div className="flex flex-wrap items-center gap-4">
-            <div className="flex items-center gap-3 flex-wrap">
+          <div className="grid gap-4 lg:grid-cols-[auto_1fr] lg:items-center">
+            <div className="flex items-center justify-center lg:justify-start gap-3 flex-wrap">
               <div className="flex gap-1 bg-gray-100 p-1 rounded-xl">
                 {[1, 2].map(h => (
                   <button
                     key={h}
                     onClick={() => switchHalf(h)}
-                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-colors ${clock.half === h ? 'bg-white shadow-sm text-amhc-black' : 'text-gray-500 hover:text-amhc-black'}`}
+                    className={`px-3 min-h-[40px] rounded-lg text-xs font-bold transition-colors ${clock.half === h ? 'bg-white shadow-sm text-amhc-black' : 'text-gray-500 hover:text-amhc-black'}`}
                   >
                     {h}e helft
                   </button>
@@ -920,42 +920,47 @@ export default function Lineup() {
               <div className="flex flex-col gap-1">
                 <button
                   onClick={toggleClock}
-                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-colors text-white ${clock.running ? 'bg-orange-500 hover:bg-orange-600' : 'bg-brand-green hover:bg-brand-dark'}`}
+                  className={`px-4 min-h-[40px] rounded-lg text-xs font-bold transition-colors text-white ${clock.running ? 'bg-orange-500 hover:bg-orange-600' : 'bg-brand-green hover:bg-brand-dark'}`}
                 >
                   {clock.running ? 'Pauzeren' : (clock.elapsed === 0 ? 'Starten' : 'Hervatten')}
                 </button>
                 {(clock.elapsed > 0 || clock.half > 1) && (
-                  <button onClick={resetClock} className="text-xs text-gray-400 hover:text-gray-600 text-center">Reset</button>
+                  <button onClick={resetClock} className="text-xs text-gray-400 hover:text-gray-600 text-center py-1">Reset</button>
                 )}
               </div>
             </div>
 
-            <div className="w-px h-16 bg-gray-200 hidden sm:block" />
-
-            {/* Score */}
-            <div className="flex items-center gap-2">
+            {/* Score — labels stay visible at every width, so it is always
+                clear which number belongs to which team */}
+            <div className="flex items-end justify-center lg:justify-end gap-2 sm:gap-3 border-t lg:border-t-0 lg:border-l border-gray-200 pt-4 lg:pt-0 lg:pl-6">
               {[
                 { key: 'home', label: selectedMatch?.isHome ? 'AMHC' : (selectedMatch?.opponent || 'AMHC'), val: score.home, color: '#006847' },
                 { key: 'away', label: selectedMatch?.isHome ? (selectedMatch?.opponent || 'Tegenstander') : 'AMHC', val: score.away, color: '#101010' },
               ].map((team, i) => (
-                <div key={team.key} className="flex items-center gap-2">
-                  {i === 1 && <span className="text-xl font-black text-gray-300 select-none px-1">–</span>}
-                  <span className="text-[10px] font-bold uppercase tracking-wider hidden sm:block truncate max-w-[64px]" style={{ color: team.color }}>{team.label}</span>
-                  <button
-                    onClick={() => setScore(s => ({ ...s, [team.key]: Math.max(0, s[team.key] - 1) }))}
-                    className="w-7 h-7 rounded-full text-sm font-black transition-all active:scale-95 flex items-center justify-center"
-                    style={{ backgroundColor: '#f3f4f6', color: '#9ca3af' }}
-                    onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#fee2e2'; e.currentTarget.style.color = '#ef4444' }}
-                    onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#f3f4f6'; e.currentTarget.style.color = '#9ca3af' }}
-                  >−</button>
-                  <span className="text-3xl font-black tabular-nums w-8 text-center leading-none" style={{ color: team.color }}>{team.val}</span>
-                  <button
-                    onClick={() => setScore(s => ({ ...s, [team.key]: s[team.key] + 1 }))}
-                    className="w-7 h-7 rounded-full text-sm font-black text-white transition-all active:scale-95 flex items-center justify-center shadow-sm"
-                    style={{ backgroundColor: team.color }}
-                    onMouseEnter={e => e.currentTarget.style.opacity = '0.8'}
-                    onMouseLeave={e => e.currentTarget.style.opacity = '1'}
-                  >+</button>
+                <div key={team.key} className="contents">
+                  {i === 1 && <span className="text-2xl font-black text-gray-300 select-none pb-1.5">–</span>}
+                  <div className="flex flex-col items-center gap-1 min-w-0">
+                    <span className="w-full text-[10px] font-bold uppercase tracking-wider truncate text-center" style={{ color: team.color }}>{team.label}</span>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => setScore(s => ({ ...s, [team.key]: Math.max(0, s[team.key] - 1) }))}
+                        aria-label={`${team.label} min 1`}
+                        className="w-10 h-10 shrink-0 rounded-full text-base font-black transition-all active:scale-95 flex items-center justify-center"
+                        style={{ backgroundColor: '#f3f4f6', color: '#9ca3af' }}
+                        onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#fee2e2'; e.currentTarget.style.color = '#ef4444' }}
+                        onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#f3f4f6'; e.currentTarget.style.color = '#9ca3af' }}
+                      >−</button>
+                      <span className="text-3xl font-black tabular-nums w-8 text-center leading-none" style={{ color: team.color }}>{team.val}</span>
+                      <button
+                        onClick={() => setScore(s => ({ ...s, [team.key]: s[team.key] + 1 }))}
+                        aria-label={`${team.label} plus 1`}
+                        className="w-10 h-10 shrink-0 rounded-full text-base font-black text-white transition-all active:scale-95 flex items-center justify-center shadow-sm"
+                        style={{ backgroundColor: team.color }}
+                        onMouseEnter={e => e.currentTarget.style.opacity = '0.8'}
+                        onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+                      >+</button>
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>
@@ -966,8 +971,10 @@ export default function Lineup() {
       <DndContext sensors={sensors} collisionDetection={pointerWithin} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
         <div className="flex flex-col md:flex-row md:flex-wrap lg:flex-nowrap gap-4 items-start">
 
-          {/* Field */}
-          <div className="w-full max-w-xs sm:max-w-sm mx-auto md:mx-0 md:flex-shrink-0">
+          {/* Field — grows into the leftover width on tablets, where the bench
+              sits beside it and the summary wraps below; fixed again from lg,
+              where all three columns share the row */}
+          <div className="w-full max-w-xs sm:max-w-sm mx-auto md:mx-0 md:max-w-none md:flex-1 lg:flex-none lg:w-[360px]">
             <div className="relative rounded-xl overflow-hidden shadow-lg" style={{ aspectRatio: '300/500' }}>
               <div className="absolute inset-0"><FieldSVG /></div>
               {positions.map(pos => {

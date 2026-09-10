@@ -29,7 +29,7 @@ function MatchModal({ match, players, onClose, onSave }) {
 
   return (
     <div className="fixed inset-0 bg-[#101010b3] flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90dvh] overflow-y-auto">
         {/* Header */}
         <div className="p-5 rounded-t-2xl flex items-center justify-between" style={{ backgroundColor: '#101010' }}>
           <div>
@@ -40,7 +40,7 @@ function MatchModal({ match, players, onClose, onSave }) {
               {formatFullDate(match.date)}{match.location ? ` · ${match.location}` : ''}
             </p>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-white text-xl leading-none transition-colors">✕</button>
+          <button onClick={onClose} className="shrink-0 w-11 h-11 -mr-2 flex items-center justify-center text-gray-400 hover:text-white text-xl leading-none transition-colors">✕</button>
         </div>
 
         <div className="p-5 space-y-6">
@@ -70,9 +70,9 @@ function MatchModal({ match, players, onClose, onSave }) {
               </h3>
               <div className="flex gap-3">
                 <button onClick={() => setAttendance(activePlayers.map(p => p.id))}
-                  className="text-xs text-amhc-green hover:underline font-semibold">Alles</button>
+                  className="text-xs text-amhc-green hover:underline font-semibold px-2 min-h-[40px]">Alles</button>
                 <button onClick={() => setAttendance([])}
-                  className="text-xs text-gray-400 hover:underline font-semibold">Wissen</button>
+                  className="text-xs text-gray-400 hover:underline font-semibold px-2 min-h-[40px]">Wissen</button>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-2 max-h-64 overflow-y-auto">
@@ -148,7 +148,7 @@ export default function Matches() {
       <div className="flex gap-1 bg-gray-200 p-1 rounded-xl mb-5 w-fit">
         {[['all', 'Alles'], ['upcoming', 'Aankomend'], ['past', 'Gespeeld']].map(([val, label]) => (
           <button key={val} onClick={() => setFilter(val)}
-            className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-colors ${filter === val ? 'bg-white shadow-sm text-amhc-black' : 'text-amhc-gray hover:text-amhc-black'}`}>
+            className={`px-4 min-h-[40px] rounded-lg text-sm font-bold transition-colors ${filter === val ? 'bg-white shadow-sm text-amhc-black' : 'text-amhc-gray hover:text-amhc-black'}`}>
             {label}
           </button>
         ))}
@@ -204,7 +204,7 @@ export default function Matches() {
                 </div>
 
                 <button onClick={() => setEditMatch(m)}
-                  className="text-xs text-amhc-green hover:text-amhc-dark font-bold px-3 py-1.5 rounded-lg hover:bg-[#0068471a] transition-colors shrink-0">
+                  className="text-xs text-amhc-green hover:text-amhc-dark font-bold px-3 min-h-[44px] rounded-lg hover:bg-[#0068471a] transition-colors shrink-0">
                   Bewerken
                 </button>
               </div>

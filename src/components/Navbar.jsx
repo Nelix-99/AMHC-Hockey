@@ -23,7 +23,7 @@ export default function Navbar() {
   const visibleLinks = links.filter(({ public: pub }) => pub || authed)
 
   const linkClass = ({ isActive }) =>
-    `px-3 py-2 rounded-lg text-sm font-semibold transition-colors ${
+    `px-3 py-2.5 rounded-lg text-sm font-semibold transition-colors flex items-center min-h-[44px] md:min-h-0 ${
       isActive ? 'bg-brand-green text-white' : 'text-gray-300 hover:text-white hover:bg-white/10'
     }`
 
@@ -32,7 +32,7 @@ export default function Navbar() {
       <div className="max-w-6xl mx-auto px-4 flex items-center justify-between h-14">
 
         {/* Logo */}
-        <NavLink to="/" className="flex items-center gap-2.5 shrink-0" onClick={() => setOpen(false)}>
+        <NavLink to="/" className="flex items-center gap-2.5 shrink-0 min-h-[44px] pr-1" onClick={() => setOpen(false)}>
           <img
             src={AMHC_LOGO_URL}
             alt="AMHC logo"
@@ -52,11 +52,11 @@ export default function Navbar() {
         {/* Desktop auth */}
         <div className="hidden md:block shrink-0">
           {authed ? (
-            <button onClick={logout} className="text-sm text-gray-400 hover:text-white transition-colors font-medium">
+            <button onClick={logout} className="text-sm text-gray-400 hover:text-white transition-colors font-medium px-2 min-h-[44px]">
               Uitloggen
             </button>
           ) : (
-            <NavLink to="/login" className="text-sm bg-brand-green hover:bg-brand-dark text-white px-3 py-1.5 rounded-lg font-semibold transition-colors">
+            <NavLink to="/login" className="text-sm bg-brand-green hover:bg-brand-dark text-white px-3 min-h-[44px] inline-flex items-center rounded-lg font-semibold transition-colors">
               Inloggen
             </NavLink>
           )}
@@ -64,7 +64,7 @@ export default function Navbar() {
 
         {/* Mobile hamburger */}
         <button
-          className="md:hidden flex flex-col justify-center items-center w-9 h-9 gap-1.5 rounded-lg hover:bg-white/10 transition-colors"
+          className="md:hidden -mr-2 flex flex-col justify-center items-center w-11 h-11 gap-1.5 rounded-lg hover:bg-white/10 active:bg-white/20 transition-colors"
           onClick={() => setOpen(o => !o)}
           aria-label={open ? 'Menu sluiten' : 'Menu openen'}
         >
@@ -93,7 +93,7 @@ export default function Navbar() {
           ))}
           <div className="border-t border-white/10 mt-2 pt-2">
             {authed ? (
-              <button onClick={logout} className="w-full text-left px-3 py-2 text-sm text-gray-400 hover:text-white font-medium rounded-lg hover:bg-white/10 transition-colors">
+              <button onClick={logout} className="w-full min-h-[44px] text-left px-3 py-2 text-sm text-gray-400 hover:text-white font-medium rounded-lg hover:bg-white/10 transition-colors">
                 Uitloggen
               </button>
             ) : (
