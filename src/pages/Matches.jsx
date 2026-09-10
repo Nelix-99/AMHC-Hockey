@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { useApp } from '../context/AppContext'
 import PlayerAvatar from '../components/PlayerAvatar'
+import { formatDayMonth, formatFullDate } from '../utils/date'
+import { hasResult, isFinished, resultOf, todayISO } from '../utils/match'
 
 function MatchModal({ match, players, onClose, onSave }) {
   const [scoreHome, setScoreHome] = useState(match.scoreHome ?? '')
@@ -35,7 +37,7 @@ function MatchModal({ match, players, onClose, onSave }) {
               {match.isHome ? 'vs' : '@'} {match.opponent}
             </h2>
             <p className="text-sm text-gray-400 font-medium mt-0.5">
-              {match.date}{match.location ? ` · ${match.location}` : ''}
+              {formatFullDate(match.date)}{match.location ? ` · ${match.location}` : ''}
             </p>
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-white text-xl leading-none transition-colors">✕</button>
@@ -107,20 +109,20 @@ export default function Matches() {
   const [editMatch, setEditMatch] = useState(null)
   const [filter, setFilter] = useState('all')
 
-  const today = new Date().toISOString().slice(0, 10)
+  const today = todayISO()
 
   const filtered = [...matches]
     .sort((a, b) => b.date.localeCompare(a.date))
     .filter(m => {
-      if (filter === 'upcoming') return m.date >= today
-      if (filter === 'past') return m.date < today
+      if (filter === 'upcoming') return !isFinished(m, today)
+      if (filter === 'past') return isFinished(m, today)
       return true
     })
 
-  const played = matches.filter(m => m.scoreHome != null && m.scoreAway != null)
-  const wins   = played.filter(m => (m.isHome ? m.scoreHome > m.scoreAway : m.scoreAway > m.scoreHome)).length
-  const losses = played.filter(m => (m.isHome ? m.scoreHome < m.scoreAway : m.scoreAway < m.scoreHome)).length
-  const draws  = played.filter(m => m.scoreHome === m.scoreAway).length
+  const played = matches.filter(m => hasResult(m, today))
+  const wins   = played.filter(m => resultOf(m) === 'W').length
+  const losses = played.filter(m => resultOf(m) === 'V').length
+  const draws  = played.filter(m => resultOf(m) === 'G').length
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
@@ -160,11 +162,9 @@ export default function Matches() {
       ) : (
         <div className="space-y-3">
           {filtered.map(m => {
-            const isPast = m.date < today
-            const hasScore = m.scoreHome != null
-            const ourScore = m.isHome ? m.scoreHome : m.scoreAway
-            const theirScore = m.isHome ? m.scoreAway : m.scoreHome
-            const result = !hasScore ? null : ourScore > theirScore ? 'W' : ourScore < theirScore ? 'V' : 'G'
+            const finished = isFinished(m, today)
+            const hasScore = hasResult(m, today)
+            const result = hasScore ? resultOf(m) : null
             const resultCls = result === 'W'
               ? 'bg-brand-green text-white'
               : result === 'V'
@@ -176,7 +176,7 @@ export default function Matches() {
             return (
               <div key={m.id} className="bg-white rounded-2xl shadow-sm p-4 flex items-start gap-3 border border-gray-100 hover:border-amhc-green/30 transition-colors">
                 <div className="shrink-0 text-center w-12 pt-0.5">
-                  <p className="text-xs text-amhc-gray font-mono font-semibold">{m.date.slice(5)}</p>
+                  <p className="text-xs text-amhc-gray font-mono font-semibold">{formatDayMonth(m.date)}</p>
                   <p className="text-xs text-gray-300 font-mono">{m.date.slice(0, 4)}</p>
                 </div>
 
@@ -195,7 +195,7 @@ export default function Matches() {
                     {hasScore ? (
                       <span className="font-mono font-bold text-base text-amhc-black">{m.scoreHome}–{m.scoreAway}</span>
                     ) : (
-                      <span className="text-xs text-gray-400 font-medium">{isPast ? 'Geen uitslag' : 'Aankomend'}</span>
+                      <span className="text-xs text-gray-400 font-medium">{finished ? 'Geen uitslag' : 'Aankomend'}</span>
                     )}
                     {result && (
                       <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${resultCls}`}>{result}</span>

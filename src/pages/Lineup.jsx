@@ -348,6 +348,20 @@ export default function Lineup() {
       setClock(newClock)
     })
     pushState({ timers: newTimers, bench_timers: newBenchTimers, clock: newClock })
+
+    // Final whistle: stamp the result on the match so it counts as played,
+    // instead of waiting for the match day to roll over.
+    if (selectedMatchId && newClock.half >= 2) {
+      supabase.from('matches').update({
+        score_home: score.home,
+        score_away: score.away,
+        lineup_snapshot: {
+          positions, bench, selectedPlayers,
+          timers: newTimers, benchTimers: newBenchTimers,
+          clock: newClock, score, format,
+        },
+      }).eq('id', selectedMatchId)
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tick])
 
@@ -374,6 +388,9 @@ export default function Lineup() {
   const clockElapsed = clock.running && clock.startTimestamp != null
     ? clock.elapsed + (Date.now() - clock.startTimestamp)
     : clock.elapsed
+
+  // Until the clock has run, the scoreboard is a scratchpad rather than a score.
+  const hasKickedOff = clock.running || clock.elapsed > 0 || clock.half > 1
 
   const onFieldIds = () => positions.filter(p => p.playerId).map(p => p.playerId)
 
@@ -463,8 +480,9 @@ export default function Lineup() {
     const newScore = typeof updater === 'function' ? updater(score) : updater
     withLocal(() => setScoreState(newScore))
     pushState({ score: newScore })
-    // Auto-save score to match so it shows in recent results
-    if (selectedMatchId) {
+    // Mirror onto the match only once it has kicked off, so a lineup prepared
+    // days in advance never leaves a 0–0 behind that reads as a final result.
+    if (selectedMatchId && hasKickedOff) {
       supabase.from('matches').update({ score_home: newScore.home, score_away: newScore.away }).eq('id', selectedMatchId)
     }
   }
@@ -510,7 +528,14 @@ export default function Lineup() {
   const saveLineup = () => {
     if (!selectedMatchId) return
     const lineup = positions.filter(p => p.playerId).map(p => ({ positionId: p.id, playerId: p.playerId }))
-    updateMatch({ id: selectedMatchId, lineup, scoreHome: score.home, scoreAway: score.away, attendees: validSelectedPlayers })
+    const patch = { id: selectedMatchId, lineup, attendees: validSelectedPlayers }
+    // matchPartial only writes the keys present, so leaving the score out keeps
+    // whatever the match already had instead of stamping a 0–0 onto it.
+    if (hasKickedOff) {
+      patch.scoreHome = score.home
+      patch.scoreAway = score.away
+    }
+    updateMatch(patch)
     setSavedMsg('Opstelling opgeslagen!')
     setTimeout(() => setSavedMsg(''), 2000)
   }

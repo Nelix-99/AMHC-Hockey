@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { useApp } from '../context/AppContext'
 import { TEAM_NAME } from '../utils/positions'
+import { hasResult, isFinished, todayISO } from '../utils/match'
 
 const MONTHS = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec']
 
@@ -13,13 +14,13 @@ export default function Home() {
   const { players, matches } = useApp()
   const authed = sessionStorage.getItem('fhm_auth') === 'true'
 
-  const today = new Date().toISOString().slice(0, 10)
+  const today = todayISO()
   const activePlayers = players.filter(p => !p.archived)
   const allUpcoming = matches
-    .filter(m => m.date >= today && m.scoreHome == null)
+    .filter(m => !isFinished(m, today))
     .sort((a, b) => a.date.localeCompare(b.date))
   const allResults = matches
-    .filter(m => m.scoreHome != null)
+    .filter(m => hasResult(m, today))
     .sort((a, b) => b.date.localeCompare(a.date))
   const upcomingMatches = allUpcoming.slice(0, 3)
   const recentResults = allResults.slice(0, 3)
