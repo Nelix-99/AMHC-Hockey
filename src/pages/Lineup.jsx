@@ -116,18 +116,38 @@ function PositionSlot({ pos, player, timer }) {
 
 // ── Bench drop zone ──────────────────────────────────────────────────────────
 
-function Bench({ benchIds, players, getTimer, getBenchTimer }) {
+function Bench({ benchIds, players, getTimer, getBenchTimer, showHint, onToggleHint }) {
   const { setNodeRef, isOver } = useDroppable({ id: 'bench' })
   return (
     <div
       ref={setNodeRef}
-      className={`w-full md:w-[190px] flex-none overflow-y-auto rounded-2xl border-2 p-3 transition-colors min-h-[200px] ${
+      className={`w-full md:w-[210px] md:flex-none rounded-2xl border-2 p-3 transition-colors min-h-[200px] ${
         isOver ? 'border-amhc-green bg-[#0068470d]' : 'border-dashed border-gray-300 bg-gray-50'
       }`}
     >
-      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2 px-1">
-        Bank ({benchIds.length})
-      </p>
+      <div className="flex items-center gap-2 mb-2 px-1">
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
+          Bank ({benchIds.length})
+        </p>
+        <button
+          onClick={onToggleHint}
+          aria-label="Uitleg over wisselen"
+          aria-expanded={showHint}
+          className={`ml-auto w-5 h-5 rounded-full border text-[10px] font-bold leading-none transition-colors ${
+            showHint
+              ? 'border-amhc-green text-amhc-green bg-[#0068471a]'
+              : 'border-gray-300 text-gray-400 hover:border-gray-400 hover:text-gray-600'
+          }`}
+        >
+          i
+        </button>
+      </div>
+      {showHint && (
+        <p className="mb-2 rounded-lg bg-[#0068471a] px-2.5 py-2 text-[11px] leading-snug text-amhc-dark">
+          <strong>Sleep spelers</strong> naar het veld, of op een speler om te wisselen.
+          Speeltijden lopen mee met de wedstrijdklok.
+        </p>
+      )}
       {benchIds.length === 0 ? (
         <p className="text-xs text-gray-400 text-center mt-6">Alle spelers op het veld</p>
       ) : (
@@ -151,10 +171,61 @@ function Bench({ benchIds, players, getTimer, getBenchTimer }) {
   )
 }
 
+// ── Play-time summary ────────────────────────────────────────────────────────
+
+function PlayTimePanel({ players, positions, getTimer, getBenchTimer }) {
+  const rows = players
+    .filter(p => getTimer(p.id) > 0 || getBenchTimer(p.id) > 0)
+    .sort((a, b) => getTimer(b.id) - getTimer(a.id))
+
+  return (
+    <div className="flex min-h-[240px] flex-col bg-white rounded-2xl shadow-sm p-3 border border-gray-100">
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-xs font-bold text-amhc-gray uppercase tracking-wide">Speeltijd</p>
+        {rows.length > 0 && (
+          <div className="flex text-[10px] font-semibold">
+            <span className="w-14 text-right text-amhc-green">Veld</span>
+            <span className="w-14 text-right text-orange-400">Bank</span>
+          </div>
+        )}
+      </div>
+      {rows.length === 0 ? (
+        <p className="flex flex-1 items-center justify-center px-4 text-center text-xs text-gray-400">
+          Speeltijden verschijnen zodra de wedstrijdklok loopt.
+        </p>
+      ) : (
+        <ul className="divide-y divide-gray-50">
+          {rows.map(p => {
+            const onField = positions.some(pos => pos.playerId === p.id)
+            const fieldTime = getTimer(p.id)
+            const bankTime = getBenchTimer(p.id)
+            return (
+              <li key={p.id} className="flex items-center gap-2 py-1">
+                <span
+                  className={`w-1.5 h-1.5 rounded-full flex-none ${onField ? 'bg-amhc-green' : 'bg-orange-300'}`}
+                />
+                <span className="flex-1 min-w-0 truncate text-sm text-gray-700">{p.name}</span>
+                <span className={'w-14 text-right font-mono text-xs font-medium ' + (onField ? 'text-amhc-green' : 'text-gray-300')}>
+                  {fieldTime > 0 ? formatTime(fieldTime) : '–'}
+                </span>
+                <span className={'w-14 text-right font-mono text-xs font-medium ' + (!onField && bankTime > 0 ? 'text-orange-400' : 'text-gray-300')}>
+                  {bankTime > 0 ? formatTime(bankTime) : '–'}
+                </span>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+    </div>
+  )
+}
+
 function DragGhost({ player }) {
   if (!player) return null
   return <PlayerAvatar player={player} size="sm" />
 }
+
+const HINT_KEY = 'lineup.hideDragHint'
 
 function formatClockTime(ms) {
   if (ms <= 0) return '0:00'
@@ -181,6 +252,9 @@ export default function Lineup() {
   const [tick, setTick] = useState(0)
   const [savedMsg, setSavedMsg] = useState('')
   const [showSelection, setShowSelection] = useState(false)
+  const [showHint, setShowHint] = useState(() => {
+    try { return localStorage.getItem(HINT_KEY) !== '1' } catch { return true }
+  })
   const [synced, setSynced] = useState(false)
   const [syncError, setSyncError] = useState(false)
   const validSelectedPlayers = [...new Set(selectedPlayers)].filter(id => activePlayers.some(player => player.id === id))
@@ -556,6 +630,12 @@ export default function Lineup() {
     pushState({ selected_players: [], positions: newPositions, bench: [] })
   }
 
+  const toggleHint = () => setShowHint(v => {
+    const next = !v
+    try { localStorage.setItem(HINT_KEY, next ? '0' : '1') } catch { /* storage unavailable */ }
+    return next
+  })
+
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 100, tolerance: 8 } }),
@@ -859,7 +939,7 @@ export default function Lineup() {
       )}
 
       <DndContext sensors={sensors} collisionDetection={pointerWithin} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-        <div className="flex flex-col md:flex-row gap-4 items-start">
+        <div className="flex flex-col md:flex-row md:flex-wrap lg:flex-nowrap gap-4 items-start">
 
           {/* Field */}
           <div className="w-full max-w-xs sm:max-w-sm mx-auto md:mx-0 md:flex-shrink-0">
@@ -879,47 +959,24 @@ export default function Lineup() {
             </div>
           </div>
 
-          {/* Bench + summary */}
-          <div className="w-full md:flex-1 flex flex-col gap-3">
-            <div className="bg-[#0068471a] border border-amhc-green/30 rounded-xl p-3 text-xs text-amhc-dark font-medium">
-              <strong>Sleep spelers</strong> van de bank naar het veld of direct op een andere speler om te wisselen. Speeltijden lopen mee met de wedstrijdklok.
-            </div>
-            <Bench benchIds={visibleBench} players={activePlayers} getTimer={getTimer} getBenchTimer={getBenchTimer} />
+          {/* Bench */}
+          <Bench
+            benchIds={visibleBench}
+            players={activePlayers}
+            getTimer={getTimer}
+            getBenchTimer={getBenchTimer}
+            showHint={showHint}
+            onToggleHint={toggleHint}
+          />
 
-            {activePlayers.some(p => getTimer(p.id) > 0 || getBenchTimer(p.id) > 0) && (
-              <div className="bg-white rounded-2xl shadow-sm p-3 border border-gray-100">
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-xs font-bold text-amhc-gray uppercase tracking-wide">Speeltijd</p>
-                  <div className="flex gap-3 text-[10px] font-semibold">
-                    <span className="text-amhc-green">Veld</span>
-                    <span className="text-orange-400">Bank</span>
-                  </div>
-                </div>
-                <ul className="space-y-1">
-                  {activePlayers
-                    .filter(p => getTimer(p.id) > 0 || getBenchTimer(p.id) > 0)
-                    .sort((a, b) => getTimer(b.id) - getTimer(a.id))
-                    .map(p => {
-                      const onField = positions.some(pos => pos.playerId === p.id)
-                      const fieldTime = getTimer(p.id)
-                      const bankTime = getBenchTimer(p.id)
-                      return (
-                        <li key={p.id} className="flex items-center justify-between text-sm">
-                          <span className="text-gray-700 truncate max-w-[100px]">{p.name}</span>
-                          <div className="flex gap-3">
-                            <span className={'font-mono text-xs font-medium ' + (onField ? 'text-amhc-green' : 'text-gray-300')}>
-                              {fieldTime > 0 ? formatTime(fieldTime) : '-'}
-                            </span>
-                            <span className={'font-mono text-xs font-medium ' + (!onField && bankTime > 0 ? 'text-orange-400' : 'text-gray-300')}>
-                              {bankTime > 0 ? formatTime(bankTime) : '-'}
-                            </span>
-                          </div>
-                        </li>
-                      )
-                    })}
-                </ul>
-              </div>
-            )}
+          {/* Play-time summary */}
+          <div className="w-full lg:flex-1 lg:min-w-0">
+            <PlayTimePanel
+              players={activePlayers}
+              positions={positions}
+              getTimer={getTimer}
+              getBenchTimer={getBenchTimer}
+            />
           </div>
         </div>
 
